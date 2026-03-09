@@ -4,10 +4,22 @@ import os
 import librosa
 
 # IMPORTANT: tell whisper where ffmpeg is
-os.environ["PATH"] += os.pathsep + r"C:\ffmpeg-8.0.1-essentials_build\bin"
+if os.name == 'nt':  
+    os.environ["PATH"] += os.pathsep + r"C:\ffmpeg-8.0.1-essentials_build\bin"
 
 # Load models
-model = whisper.load_model("base")
+model = None
+def get_model():
+    global model
+    if model is None:
+        try:
+            print("Loading Whisper model...")
+            model = whisper.load_model("tiny")
+            print("Whisper model loaded successfully")
+        except Exception as e:
+            print(f"Failed to load Whisper model: {e}")
+            raise RuntimeError("Audio transcription unavailable due to model loading failure.")
+    return model
 
 # Initialize LanguageTool with error handling
 try:
@@ -33,6 +45,7 @@ def transcribe_audio(audio_path):
 
     print("\n===== STARTING TRANSCRIPTION =====")
 
+    model = get_model()
     result = model.transcribe(audio_path)
 
     text = result["text"]
