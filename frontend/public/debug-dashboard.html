@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug Dashboard</title>
+</head>
+<body>
+    <h1>Dashboard Debug</h1>
+    
+    <h2>Token Check</h2>
+    <p id="token-display">Checking...</p>
+    
+    <h2>API Test</h2>
+    <button onclick="testDashboardAPI()">Test Dashboard API</button>
+    <div id="api-result"></div>
+    
+    <h2>Browser Console</h2>
+    <p>Open browser console (F12) and check for errors</p>
+    
+    <script>
+        const token = localStorage.getItem('token');
+        document.getElementById('token-display').textContent = token ? 'Found' : 'Not found';
+        
+        async function testDashboardAPI() {
+            try {
+                console.log('Testing dashboard API...');
+                const response = await fetch('http://localhost:5173/api/dashboard', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                const result = await response.json();
+                console.log('API Response:', result);
+                document.getElementById('api-result').innerHTML = `
+                    <h3>API Test Result:</h3>
+                    <pre>${JSON.stringify(result, null, 2)}</pre>
+                `;
+            } catch (error) {
+                console.error('API Error:', error);
+                document.getElementById('api-result').innerHTML = `
+                    <h3>API Error:</h3>
+                    <pre>${error.message}</pre>
+                `;
+            }
+        }
+        
+        async function testDirectBackend() {
+            try {
+                console.log('Testing direct backend connection...');
+                const response = await fetch('http://localhost:5173/tests/me/dashboard', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                const result = await response.json();
+                console.log('Direct Backend Response:', result);
+            } catch (error) {
+                console.error('Direct Backend Error:', error);
+            }
+        }
+    </script>
+</body>
+</html>
