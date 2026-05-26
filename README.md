@@ -1,5 +1,5 @@
 # SpeakForge AI Speaking System
-
+SpeakForge is an AI-powered speaking evaluation platform that transcribes audio responses using Whisper and scores grammar and fluency in real-time.
 A comprehensive AI-powered speaking evaluation system built with FastAPI backend and React frontend.
 
 ## 🚀 Features
