@@ -1,37 +1,25 @@
 # Production Deployment
 
-For AWS EC2, follow the complete [AWS deployment guide](docs/AWS_DEPLOYMENT.md).
+SpeakForge is packaged for a single-server Docker deployment on AWS EC2 or another Linux host.
 
-## Required secrets
-
-Copy `.env.example` to `.env`, set strong unique values for `SECRET_KEY`, `ADMIN_SECRET_KEY`, `MYSQL_PASSWORD`, and `MYSQL_ROOT_PASSWORD`, then set the public frontend and backend URLs. Do not commit `.env`.
-
-## New installation
+## Quick start
 
 ```powershell
+cp .env.example .env
+# Set real production secrets and domains in .env
 docker compose up -d --build
 ```
 
-The backend container waits for MySQL, applies the Alembic migrations, and starts Gunicorn with Uvicorn workers. The frontend is served by Nginx and uses the build-time `VITE_API_URL` value.
+The stack starts MySQL, applies Alembic migrations, runs FastAPI with Gunicorn, serves React with Nginx, and provides HTTPS through Caddy.
 
-## Existing database
+## Verification
 
-Back up the database first. If the existing schema already matches the initial migration, mark it as managed before starting the Compose backend:
-
-```powershell
-docker compose run --rm backend alembic stamp 0001_initial
-docker compose up -d --build
+```bash
+docker compose ps
+curl https://api.your-domain.com/health
 ```
 
-For a new database, use the normal `docker compose up -d --build` command.
-
-## Operations
-
-- API readiness: `GET /health` checks both application and database availability.
-- Logs: `docker compose logs -f backend`.
-- Stop services: `docker compose down`.
-- Persistent data is stored in the `mysql_data` and `uploads` volumes.
-- Put TLS termination and a domain certificate in front of the frontend and API in the hosting environment.
+Do not expose MySQL or the backend port directly to the public internet.
 
 ## Important production requirements
 

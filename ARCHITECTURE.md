@@ -26,7 +26,7 @@ SpeakForge is an AI-powered speaking evaluation system that assesses users' Engl
 └─────────────────────────────────────────────────────────────┘
                           ↕
 ┌─────────────────────────────────────────────────────────────┐
-│                    DATABASE (SQLite)                         │
+│                    DATABASE (MySQL)                           │
 │  Users | Tests | Questions | Answers | Results              │
 └─────────────────────────────────────────────────────────────┘
                           ↕
@@ -43,7 +43,7 @@ SpeakForge is an AI-powered speaking evaluation system that assesses users' Engl
 #### **Backend**
 - **FastAPI**: Modern, fast Python web framework
 - **SQLAlchemy**: ORM for database operations
-- **SQLite**: Lightweight database (configurable to PostgreSQL/MySQL)
+- **MySQL**: Production relational database
 - **Pydantic**: Data validation and settings management
 - **JWT (python-jose)**: Token-based authentication
 - **Bcrypt**: Password hashing
@@ -183,7 +183,7 @@ SpeakForge is an AI-powered speaking evaluation system that assesses users' Engl
 
 #### **API Integration**
 - Centralized API functions in `api.js`
-- Base URL: `http://127.0.0.1:8000`
+- Base URL: configured through `VITE_API_URL`
 - JWT token stored in localStorage
 - Automatic token inclusion in headers
 
@@ -255,9 +255,9 @@ frontend/
 ---
 
 ### **Current Status**
-✅ **Backend**: Running on http://127.0.0.1:8000
+✅ **Backend**: FastAPI service with production deployment support
 ✅ **Frontend**: Running on http://127.0.0.1:5173  
-✅ **Database**: SQLite configured and operational
+✅ **Database**: MySQL with Alembic migrations
 ✅ **Build**: Frontend production build successful
 ✅ **Dependencies**: All compatibility issues resolved
 ✅ **Email**: Optional configuration (works without email setup)

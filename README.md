@@ -1,225 +1,142 @@
-# SpeakForge AI Speaking System
-SpeakForge is an AI-powered speaking evaluation platform that transcribes audio responses using Whisper and scores grammar and fluency in real-time.
-A comprehensive AI-powered speaking evaluation system built with FastAPI backend and React frontend.
+# SpeakForge
 
-## 🚀 Features
+AI-powered speaking and writing assessment platform for structured practice, automated evaluation, and actionable feedback.
 
-- **AI-Powered Evaluation**: Advanced grammar and fluency scoring for both audio and text answers
-- **User Management**: Registration, login, email verification
-- **Admin Dashboard**: Test creation, question management, analytics
-- **User Dashboard**: Performance stats, recent attempts, available tests
-- **Real-time Feedback**: Instant AI evaluation with detailed scoring
-- **Responsive Design**: Modern UI with Tailwind CSS and Framer Motion
+## Product overview
 
-## 🛠️ Tech Stack
+SpeakForge gives learners a complete assessment workflow:
 
-### Backend
-- **FastAPI**: Modern Python web framework
-- **SQLAlchemy**: ORM for database management
-- **JWT**: Secure authentication
-- **Whisper AI**: Audio transcription
-- **LanguageTool**: Grammar checking
-- **SQLite**: Database (configurable)
+- Create an account and verify email ownership
+- Take structured tests with text or audio responses
+- Transcribe audio with Whisper-based speech recognition
+- Evaluate grammar, fluency, vocabulary, and response quality
+- Review per-answer feedback and performance reports
+- Track progress through user dashboards and result history
 
-### Frontend
-- **React 18**: Modern UI framework
-- **React Router**: Client-side routing
-- **Tailwind CSS**: Utility-first styling
-- **Framer Motion**: Smooth animations
-- **SweetAlert2**: Beautiful alerts
-- **Axios**: HTTP client
+Administrators can create tests, manage questions, review analytics, and monitor platform activity through a protected dashboard.
 
-## 📋 Prerequisites
+## Why this project
 
-- Python 3.8+
-- Node.js 14+
-- npm or yarn
+SpeakForge combines a modern assessment experience with an AI-assisted evaluation pipeline. It is designed as a practical foundation for language-learning products, interview preparation platforms, and communication-skills programs.
 
-## 🚀 Quick Start
+## Technical architecture
 
-### Backend Setup
+- **Frontend:** React 18, React Router, Vite, Tailwind CSS, Framer Motion
+- **Backend:** FastAPI, SQLAlchemy, Pydantic, Gunicorn
+- **Database:** MySQL with Alembic migrations
+- **AI pipeline:** Faster-Whisper transcription and LanguageTool grammar analysis
+- **Authentication:** JWT access tokens, bcrypt password hashing, email verification, password reset
+- **Operations:** Docker Compose, Nginx frontend, Caddy HTTPS reverse proxy
 
-1. **Navigate to backend directory**
-   ```bash
-   cd backend
-   ```
+## Evaluation pipeline
 
-2. **Create virtual environment**
-   ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   ```
+```text
+Audio response -> upload -> Whisper transcription -> grammar analysis
+               -> fluency scoring -> final score -> detailed feedback
 
-3. **Install dependencies**
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-4. **Setup environment variables**
-   ```bash
-   cp .env.example .env
-   # Edit .env with your configuration
-   ```
-
-5. **Start the server**
-   ```bash
-   uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
-   ```
-
-### Frontend Setup
-
-1. **Navigate to frontend directory**
-   ```bash
-   cd frontend
-   ```
-
-2. **Install dependencies**
-   ```bash
-   npm install
-   ```
-
-3. **Start development server**
-   ```bash
-   npm run dev
-   ```
-
-## 🔧 Configuration
-
-### Environment Variables (.env)
-
-```env
-# Database Configuration (local MySQL)
-DATABASE_URL=mysql+pymysql://root:0404@localhost:3306/speakforge
-
-# JWT Configuration
-SECRET_KEY=your_super_secret_key_here
-
-# Email Configuration
-EMAIL_HOST=smtp.gmail.com
-EMAIL_PORT=587
-EMAIL_USERNAME=your_email@gmail.com
-EMAIL_PASSWORD=your_app_password
-EMAIL_FROM=your_email@gmail.com
-
-# CORS Configuration
-ALLOWED_ORIGINS=["http://localhost:3000", "http://127.0.0.1:3000"]
+Text response  -> validation -> grammar analysis -> writing evaluation
+               -> final score -> detailed feedback
 ```
 
-## 📊 API Endpoints
+## Core capabilities
 
-### Authentication
-- `POST /auth/register` - User registration
-- `POST /auth/login` - User login
-- `GET /auth/verify-email` - Email verification
+### Learner experience
 
-### Tests
-- `GET /tests/` - Get all tests
-- `GET /tests/{id}` - Get test details
-- `GET /tests/{id}/questions` - Get test questions
-- `GET /tests/report/{id}` - Get the authenticated user's evaluation report
-- `POST /tests/submit-answer/{question_id}` - Submit audio answer
-- `POST /tests/submit-text-answer/{question_id}` - Submit text answer
+- Secure registration and login
+- Email verification and password recovery
+- Text and audio test answers
+- AI-generated scoring and feedback
+- Detailed test reports
+- Dashboard statistics and attempt history
 
-### User Dashboard
-- `GET /tests/me/dashboard` - User statistics
-- `GET /tests/me/answers` - Recent answers
+### Administration
 
-### Admin
-- `POST /tests/` - Create test
-- `PUT /tests/{id}` - Update test
-- `DELETE /tests/{id}` - Delete test
+- Test creation and editing
+- Question management
+- Audio and text question types
+- Platform analytics
+- Role-protected administration APIs
 
-## 🎯 Key Features
+## Repository structure
 
-### AI Evaluation System
-- **Audio Processing**: Whisper transcription + AI analysis
-- **Text Analysis**: Direct text evaluation
-- **Dual Scoring**: Separate fluency metrics for speaking vs writing
-- **Performance Levels**: Beginner to Expert classification
-- **Detailed Feedback**: Grammar, fluency, and improvement suggestions
+```text
+backend/       FastAPI application, services, database models, migrations
+frontend/      React application and user/admin interfaces
+Caddyfile      HTTPS reverse-proxy configuration
+.env.example   Configuration template without real secrets
+docker-compose.yml  Local and single-server deployment definition
+```
 
-### User Experience
-- **Loading States**: Visual feedback during AI processing
-- **Error Handling**: Comprehensive error messages
-- **Responsive Design**: Works on all devices
-- **Smooth Animations**: Professional UI transitions
+## Local development
 
-## 🔒 Security Features
+### Backend
 
-- **JWT Authentication**: Secure token-based auth
-- **Password Hashing**: Bcrypt encryption
-- **Email Verification**: Account validation
-- **Role-Based Access**: Admin/User separation
-- **CORS Protection**: Secure cross-origin requests
+```bash
+cd backend
+python -m venv venv
+# Windows: venv\Scripts\activate
+# macOS/Linux: source venv/bin/activate
+pip install -r requirements.txt
+```
 
-## 🐛 Troubleshooting
+Copy `.env.example` to `.env` at the repository root and set local values. Then run:
 
-### Common Issues
+```bash
+uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+```
 
-1. **401 Unauthorized Errors**
-   - Check JWT secret key configuration
-   - Verify token storage in localStorage
-   - Ensure correct API endpoints with /auth prefix
+### Frontend
 
-2. **Database Connection Issues**
-   - Check DATABASE_URL in .env
-   - Ensure database file permissions
-   - Run database migrations
+```bash
+cd frontend
+npm install
+npm run dev
+```
 
-3. **Email Verification Not Working**
-   - Verify SMTP configuration
-   - Check email/password credentials
-   - Ensure app password for Gmail
+The frontend API URL is configured with `VITE_API_URL`. It defaults to the local backend for development.
 
-4. **Frontend Build Issues**
-   - Clear node_modules and reinstall
-   - Check Node.js version compatibility
-   - Verify environment variables
+## Production deployment
 
-## 📝 Development Notes
+The repository includes Docker-based deployment assets for AWS EC2 and other Linux servers:
 
-### Backend Architecture
-- Modular structure with separate routes, services, and utilities
-- Dependency injection for database sessions
-- Comprehensive error handling
-- Type hints throughout codebase
+```bash
+docker compose up -d --build
+```
 
-### Frontend Architecture
-- Component-based structure
-- Protected routes with authentication checks
-- Centralized API configuration
-- Responsive design patterns
+Set real secrets, domains, SMTP credentials, and `VITE_API_URL` before deployment. See the deployment configuration files in the repository for the operational setup.
 
-## 🚀 Deployment
+## Quality checks
 
-### Backend Deployment
-1. Set production environment variables
-2. Use production database (PostgreSQL recommended)
-3. Configure reverse proxy (nginx)
-4. Use WSGI server (Gunicorn)
+```bash
+cd frontend
+npm run lint
+npm run build
+```
 
-### Frontend Deployment
-1. Build production assets: `npm run build`
-2. Serve static files
-3. Configure environment variables
-4. Set up proper routing
+```bash
+cd backend
+python -m py_compile app/*.py app/routes/*.py app/services/*.py app/utils/*.py
+```
 
-## 📄 License
+## API highlights
+
+- `POST /auth/register` - Register a user
+- `POST /auth/login` - Authenticate and receive a JWT
+- `GET /tests/` - List available tests
+- `GET /tests/{id}/questions` - Load test questions
+- `POST /tests/submit-answer/{question_id}` - Submit an answer
+- `POST /tests/{id}/submit` - Submit a completed test
+- `GET /tests/report/{id}` - Retrieve an evaluation report
+- `GET /health` - Check API and database readiness
+
+## Security and privacy
+
+Secrets are supplied through environment variables and are excluded from version control. Production deployments should use HTTPS, restricted firewall rules, managed secrets, database backups, and durable storage for uploaded audio.
+
+## Project status
+
+SpeakForge is an actively developed portfolio and product prototype demonstrating full-stack application design, AI-assisted evaluation, role-based workflows, and production-oriented deployment practices.
+
+## License
 
 This project is licensed under the MIT License.
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
-
-## 📞 Support
-
-For issues and questions:
-- Check the troubleshooting section
-- Review API documentation
-- Verify environment setup
-- Check browser console for errors
