@@ -8,3 +8,6 @@ __pycache__/
 .env
 dist/
 uploads/
+
+# Private local deployment and audit documents
+docs/
