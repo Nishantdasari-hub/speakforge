@@ -41,7 +41,7 @@ class QuestionCreate(BaseModel):
 class QuestionResponse(BaseModel):
     id: int
     question_text: str
-    written_instruction: Optional[str] = None
+    question_type: Optional[str] = None
     time_limit: Optional[int] = None
     order_number: Optional[int] = None
 
@@ -79,12 +79,12 @@ class QuestionAnswerResponse(BaseModel):
     audio_path: Optional[str] = None
     transcribed_text: Optional[str] = None
     grammar_score: Optional[int] = None
-    fluency_score: Optional[int] = None
+    fluency_score: Optional[float] = None
     final_score: Optional[int] = None
     grammar_errors: Optional[int] = None
     word_count: Optional[int] = None
     feedback: Optional[str] = None
-    submitted_at: datetime
+    created_at: datetime
 
     model_config = {
         "from_attributes": True
@@ -98,9 +98,9 @@ class ResultResponse(BaseModel):
     id: int
     user_id: int
     test_id: int
-    score: int
-    answers: Optional[dict]
-    evaluation: Optional[dict]
+    score: float
+    answers: Optional[list] = None
+    evaluation: Optional[dict] = None
     submitted_at: datetime
 
     class Config:
@@ -111,7 +111,7 @@ class TextAnswer(BaseModel):
 
 class UserResultResponse(BaseModel):
     id: int
-    score: int
+    score: float
     evaluation:Optional[dict] = None
     submitted_at: datetime
     test_id: int

@@ -67,7 +67,7 @@ class QuestionAnswer(Base):
     
     # Evaluation fields
     grammar_score = Column(Integer, nullable=True)
-    fluency_score = Column(Integer, nullable=True)
+    fluency_score = Column(Float, nullable=True)
     final_score = Column(Integer, nullable=True)
     grammar_errors = Column(Integer, nullable=True)
     word_count = Column(Integer, nullable=True)  # Track word count for analytics

@@ -21,14 +21,24 @@ def get_model():
             raise RuntimeError("Audio transcription unavailable due to model loading failure.")
     return model
 
-# Initialize LanguageTool with error handling
-try:
-    tool = language_tool_python.LanguageTool('en-US')
-    print(" LanguageTool initialized successfully")
-except Exception as e:
-    print(f" LanguageTool failed to initialize: {e}")
-    print(" Grammar checking will be disabled")
-    tool = None
+# LanguageTool is initialized lazily: the first call downloads a large
+# archive, which would otherwise block application startup.
+tool = None
+_tool_init_failed = False
+
+
+def get_tool():
+    global tool, _tool_init_failed
+    if tool is None and not _tool_init_failed:
+        try:
+            print("Initializing LanguageTool...")
+            tool = language_tool_python.LanguageTool('en-US')
+            print("LanguageTool initialized successfully")
+        except Exception as e:
+            print(f"LanguageTool failed to initialize: {e}")
+            print("Grammar checking will be disabled")
+            _tool_init_failed = True
+    return tool
 
 
 def get_audio_duration(audio_path):
@@ -104,9 +114,10 @@ def evaluate_answer(question, answer, audio_duration=None, answer_type="audio"):
         }
 
     # Grammar checking (same for both audio and text)
-    if tool is not None:
+    grammar_tool = get_tool()
+    if grammar_tool is not None:
         try:
-            matches = tool.check(answer)
+            matches = grammar_tool.check(answer)
             grammar_errors = len(matches)
             
             # Calculate grammar score based on error density
@@ -131,7 +142,7 @@ def evaluate_answer(question, answer, audio_duration=None, answer_type="audio"):
             else:
                 grammar_score = 0
                 
-        except:
+        except Exception:
             grammar_errors = 0
             grammar_score = 5  # Default middle score if checking fails
             print("⚠️ Grammar checking failed, using default values")

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import Swal from "sweetalert2";
 
@@ -13,7 +13,7 @@ export default function AdminTests() {
 
   const token = localStorage.getItem("token");
 
-  const loadTests = async () => {
+  const loadTests = useCallback(async () => {
     const res = await fetch("http://127.0.0.1:8000/tests/", {
       headers: {
         Authorization: `Bearer ${token}`
@@ -21,12 +21,19 @@ export default function AdminTests() {
     });
 
     const data = await res.json();
-    setTests(data);
-  };
+    setTests(Array.isArray(data) ? data : []);
+  }, [token]);
 
-useEffect(() => {
-    loadTests();
-  }, []);
+  useEffect(() => {
+    fetch("http://127.0.0.1:8000/tests/", {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    })
+      .then(res => res.json())
+      .then(data => setTests(Array.isArray(data) ? data : []))
+      .catch(err => console.error(err));
+  }, [token]);
 
   const createTest = async () => {
     if (!title) {
@@ -77,7 +84,7 @@ useEffect(() => {
       } else {
         Swal.fire("Error", "Failed to delete test", "error");
       }
-    } catch (error) {
+    } catch {
       Swal.fire("Error", "Network error", "error");
     }
   };
@@ -113,7 +120,7 @@ useEffect(() => {
       } else {
         Swal.fire("Error", "Failed to update test", "error");
       }
-    } catch (error) {
+    } catch {
       Swal.fire("Error", "Network error", "error");
     }
   };

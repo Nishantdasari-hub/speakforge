@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-SECRET_KEY = os.getenv("SECRET_KEY")
+SECRET_KEY = os.getenv("SECRET_KEY", "SUPER_SECRET_DEV_KEY")
 ALGORITHM = "HS256"
 
 def create_verification_token(email: str):

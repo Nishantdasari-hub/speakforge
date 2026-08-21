@@ -153,7 +153,7 @@ return;
 }
 
 const response = await fetch(
-`http://127.0.0.1:8000/tests/${id}/submit`,
+`http://127.0.0.1:8000/tests/submit-text-answer/${q.id}`,
 {
 method: "POST",
 headers: {
@@ -169,15 +169,9 @@ if (response.ok && showEvaluation) {
 const result = await response.json();
 
 Swal.fire({
-icon: result.final_score >= 7 ? "success" : "info",
-title: "Answer Evaluated",
-html: `
-<p><b>Grammar:</b> ${result.grammar_score}/10</p>
-<p><b>Fluency:</b> ${result.fluency_score}/10</p>
-<p><b>Final Score:</b> ${result.final_score}/10</p>
-<p><b>Word Count:</b> ${result.word_count}</p>
-<p><b>Feedback:</b> ${result.feedback}</p>
-`
+icon: result.score >= 7 ? "success" : "info",
+title: `Score: ${result.score}/10`,
+text: "Answer evaluated successfully"
 });
 
 }
@@ -197,7 +191,7 @@ setIsSubmitting(false);
 
 }
 
-}, [audioBlob, textAnswer, questions, current, token, isSubmitting, id]);
+}, [audioBlob, textAnswer, questions, current, token, isSubmitting]);
 
 
 

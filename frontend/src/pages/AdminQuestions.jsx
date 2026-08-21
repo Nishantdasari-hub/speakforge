@@ -27,8 +27,9 @@ export default function AdminQuestions() {
       }
     })
       .then(res => res.json())
-      .then(data => setTests(data));
-  }, []);
+      .then(data => setTests(Array.isArray(data) ? data : []))
+      .catch(err => console.error(err));
+  }, [token]);
 
 
   // Load Questions
@@ -65,7 +66,7 @@ export default function AdminQuestions() {
       return;
     }
 
-    const res = await fetch(`http://127.0.0.1:8000/tests/${selectedTest}/questions`, {
+    await fetch(`http://127.0.0.1:8000/tests/${selectedTest}/questions`, {
 
       method: "POST",
 
