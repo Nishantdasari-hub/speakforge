@@ -80,6 +80,32 @@ def get_test(test_id: int, db: Session = Depends(get_db)):
 
 
 # ======================================================
+# UPDATE TEST (ADMIN)
+# ======================================================
+
+@router.put("/{test_id}", response_model=schemas.TestResponse)
+def update_test(
+    test_id: int,
+    test: schemas.TestCreate,
+    db: Session = Depends(get_db),
+    current_admin = Depends(get_current_admin)
+):
+
+    existing = db.query(models.Test).filter(models.Test.id == test_id).first()
+
+    if not existing:
+        raise HTTPException(status_code=404, detail="Test not found")
+
+    existing.title = test.title
+    existing.description = test.description
+
+    db.commit()
+    db.refresh(existing)
+
+    return existing
+
+
+# ======================================================
 # ADD QUESTION (ADMIN)
 # ======================================================
 
@@ -127,6 +153,68 @@ def get_questions(
     ).all()
 
     return questions
+
+
+# ======================================================
+# UPDATE QUESTION (ADMIN)
+# ======================================================
+
+@router.put("/{test_id}/questions/{question_id}", response_model=schemas.QuestionResponse)
+def update_question(
+    test_id: int,
+    question_id: int,
+    question: schemas.QuestionCreate,
+    db: Session = Depends(get_db),
+    current_admin = Depends(get_current_admin)
+):
+
+    existing = db.query(models.Question).filter(
+        models.Question.id == question_id,
+        models.Question.test_id == test_id
+    ).first()
+
+    if not existing:
+        raise HTTPException(status_code=404, detail="Question not found")
+
+    existing.question_text = question.question_text
+    existing.question_type = question.question_type
+    existing.time_limit = question.time_limit
+    existing.order_number = question.order_number
+
+    db.commit()
+    db.refresh(existing)
+
+    return existing
+
+
+# ======================================================
+# DELETE QUESTION (ADMIN)
+# ======================================================
+
+@router.delete("/{test_id}/questions/{question_id}")
+def delete_question(
+    test_id: int,
+    question_id: int,
+    db: Session = Depends(get_db),
+    current_admin = Depends(get_current_admin)
+):
+
+    question = db.query(models.Question).filter(
+        models.Question.id == question_id,
+        models.Question.test_id == test_id
+    ).first()
+
+    if not question:
+        raise HTTPException(status_code=404, detail="Question not found")
+
+    db.query(models.QuestionAnswer).filter(
+        models.QuestionAnswer.question_id == question_id
+    ).delete()
+
+    db.delete(question)
+    db.commit()
+
+    return {"message": "Question deleted successfully"}
 
 
 # ======================================================
@@ -365,10 +453,114 @@ def delete_test(
     if not test:
         raise HTTPException(status_code=404, detail="Test not found")
 
+    question_ids = [
+        q.id for q in db.query(models.Question).filter(
+            models.Question.test_id == test_id
+        ).all()
+    ]
+
+    if question_ids:
+        db.query(models.QuestionAnswer).filter(
+            models.QuestionAnswer.question_id.in_(question_ids)
+        ).delete(synchronize_session=False)
+
+        db.query(models.Question).filter(
+            models.Question.test_id == test_id
+        ).delete(synchronize_session=False)
+
+    db.query(models.Result).filter(
+        models.Result.test_id == test_id
+    ).delete(synchronize_session=False)
+
     db.delete(test)
     db.commit()
 
     return {"message": "Test deleted successfully"}
+
+
+# ======================================================
+# SUBMIT TEST / GENERATE REPORT
+# ======================================================
+
+@router.post("/{test_id}/submit")
+def submit_test(
+    test_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+
+    test = db.query(models.Test).filter(models.Test.id == test_id).first()
+
+    if not test:
+        raise HTTPException(status_code=404, detail="Test not found")
+
+    answers = db.query(models.QuestionAnswer)\
+        .join(models.Question, models.Question.id == models.QuestionAnswer.question_id)\
+        .filter(
+            models.Question.test_id == test_id,
+            models.QuestionAnswer.user_id == current_user.id
+        ).all()
+
+    scores = [a.final_score for a in answers if a.final_score is not None]
+    grammar_scores = [a.grammar_score for a in answers if a.grammar_score is not None]
+    fluency_scores = [a.fluency_score for a in answers if a.fluency_score is not None]
+
+    avg_score = round(sum(scores) / len(scores), 2) if scores else 0
+    avg_grammar = round(sum(grammar_scores) / len(grammar_scores), 2) if grammar_scores else 0
+    avg_fluency = round(sum(fluency_scores) / len(fluency_scores), 2) if fluency_scores else 0
+
+    if avg_score >= 9:
+        level = "Expert"
+    elif avg_score >= 7:
+        level = "Advanced"
+    elif avg_score >= 5:
+        level = "Intermediate"
+    else:
+        level = "Beginner"
+
+    suggestions = []
+
+    if avg_fluency < 7:
+        suggestions.append("Try to speak more smoothly and avoid long pauses.")
+
+    if avg_grammar < 7:
+        suggestions.append("Work on improving grammar accuracy.")
+
+    if avg_score >= 8:
+        suggestions.append("Great job! Try using more advanced vocabulary.")
+
+    if not suggestions:
+        suggestions.append("Keep practicing regularly to improve your speaking skills.")
+
+    report = {
+        "overall_score": avg_score,
+        "average_grammar": avg_grammar,
+        "average_fluency": avg_fluency,
+        "level": level,
+        "suggestions": suggestions
+    }
+
+    result = models.Result(
+        user_id=current_user.id,
+        test_id=test_id,
+        score=avg_score,
+        evaluation=report,
+        answers=[
+            {
+                "question_id": a.question_id,
+                "written_answer": a.written_answer,
+                "transcribed_text": a.transcribed_text,
+                "final_score": a.final_score
+            }
+            for a in answers
+        ]
+    )
+
+    db.add(result)
+    db.commit()
+    db.refresh(result)
+
+    return {**report, "result_id": result.id, "answers_count": len(answers)}
 
 @router.get("/me/results")
 def get_my_results(

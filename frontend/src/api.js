@@ -51,12 +51,12 @@ export const registerUser = async (data) => {
 
 
 export const getTestDetail = async (id) => {
-  const res = await fetch(`${BASE_URL}/tests/tests/${id}`);
+  const res = await fetch(`${BASE_URL}/tests/${id}`);
   return res.json();
 };
 
 export const getMyResults = async (token) => {
-  const res = await fetch("http://127.0.0.1:8000/tests/me/results", {
+  const res = await fetch(`${BASE_URL}/tests/me/results`, {
     headers: {
       Authorization: `Bearer ${token}`,
     },

@@ -71,7 +71,10 @@ async def register_user(request: RegisterRequest, db: Session = Depends(get_db))
 
     token = create_verification_token(new_user.email)
 
-    await send_verification_email(new_user.email, token)
+    try:
+        await send_verification_email(new_user.email, token)
+    except Exception as e:
+        print(f"[SpeakForge] Failed to send verification email: {e}")
 
     return {
         "message": "User registered successfully",
@@ -103,7 +106,9 @@ def verify_email(token: str, db: Session = Depends(get_db)):
     user.is_verified = True
     db.commit()
 
-    return RedirectResponse(url="http://localhost:5173/login")
+    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
+
+    return RedirectResponse(url=f"{frontend_url}/login")
 # ---------------- LOGIN ---------------- #
 
 @router.post("/login")
