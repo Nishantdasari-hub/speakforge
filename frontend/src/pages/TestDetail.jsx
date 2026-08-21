@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 import { motion } from "framer-motion";
+import { API_BASE_URL } from "../config";
 
 function TestDetail() {
 
@@ -25,12 +26,10 @@ const [isSubmitting, setIsSubmitting] = useState(false);
 
 const token = localStorage.getItem("token");
 
-
-// ---------------- LOAD QUESTIONS ----------------
-
+// LOAD QUESTIONS
 useEffect(() => {
 
-fetch(`http://127.0.0.1:8000/tests/${id}/questions`, {
+fetch(`${API_BASE_URL}/tests/${id}/questions`, {
 headers: { Authorization: `Bearer ${token}` }
 })
 .then(res => res.json())
@@ -47,10 +46,7 @@ setTimeLeft(data[0].time_limit);
 
 }, [id, token]);
 
-
-
-// ---------------- RECORD AUDIO ----------------
-
+// RECORD AUDIO
 const startRecording = async () => {
 
 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -78,9 +74,7 @@ setRecordingStartTime(Date.now());
 
 };
 
-
-// ---------------- STOP RECORDING ----------------
-
+// STOP RECORDING
 const stopRecording = () => {
 
 if (mediaRecorder) {
@@ -91,11 +85,8 @@ setRecording(false);
 
 };
 
-
-
-// ---------------- UPLOAD ANSWER ----------------
-
-const uploadAnswer = useCallback(async (showEvaluation = true) => {
+// UPLOAD ANSWER
+const uploadAnswer = useCallback(async () => {
 
 if (isSubmitting || !questions.length) return;
 
@@ -107,6 +98,8 @@ try {
 
 setLoadingAI(true);
 
+const formData = new FormData();
+
 if (q.question_type === "audio") {
 
 if (!audioBlob) {
@@ -115,34 +108,7 @@ setLoadingAI(false);
 return;
 }
 
-const formData = new FormData();
-formData.append("file", audioBlob, "answer.webm");
-
-const response = await fetch(
-`http://127.0.0.1:8000/tests/submit-answer/${q.id}`,
-{
-method: "POST",
-headers: { Authorization: `Bearer ${token}` },
-body: formData
-}
-);
-
-if (showEvaluation) {
-
-const result = await response.json();
-
-Swal.fire({
-icon: result.final_score >= 7 ? "success" : "info",
-title: `Score: ${result.final_score}/10`,
-html: `
-<p><b>Fluency:</b> ${result.fluency_score}</p>
-<p><b>Grammar:</b> ${result.grammar_score}</p>
-<p><b>Words:</b> ${result.word_count}</p>
-<p><b>Feedback:</b> ${result.feedback}</p>
-`
-});
-
-}
+formData.append("audio", audioBlob, "answer.webm");
 
 } else {
 
@@ -152,31 +118,18 @@ setLoadingAI(false);
 return;
 }
 
-const response = await fetch(
-`http://127.0.0.1:8000/tests/submit-text-answer/${q.id}`,
+formData.append("text_answer", textAnswer);
+
+}
+
+await fetch(
+`${API_BASE_URL}/tests/submit-answer/${q.id}`,
 {
 method: "POST",
-headers: {
-"Content-Type": "application/json",
-Authorization: `Bearer ${token}`
-},
-body: JSON.stringify({ answer: textAnswer })
+headers: { Authorization: `Bearer ${token}` },
+body: formData
 }
 );
-
-if (response.ok && showEvaluation) {
-
-const result = await response.json();
-
-Swal.fire({
-icon: result.score >= 7 ? "success" : "info",
-title: `Score: ${result.score}/10`,
-text: "Answer evaluated successfully"
-});
-
-}
-
-}
 
 } catch (error) {
 
@@ -193,13 +146,10 @@ setIsSubmitting(false);
 
 }, [audioBlob, textAnswer, questions, current, token, isSubmitting]);
 
-
-
-// ---------------- NEXT QUESTION ----------------
-
+// NEXT QUESTION
 const nextQuestion = useCallback(async () => {
 
-await uploadAnswer(false);
+await uploadAnswer();
 
 if (current < questions.length - 1) {
 
@@ -213,10 +163,7 @@ setTimeLeft(questions[nextIndex].time_limit);
 
 }, [uploadAnswer, current, questions]);
 
-
-
-// ---------------- TIMER ----------------
-
+// TIMER
 useEffect(() => {
 
 if (!questions.length) return;
@@ -225,7 +172,7 @@ const timer = setInterval(() => {
 
 setTimeLeft(prev => {
 
-if (prev <= 1) {
+if (prev === 1) {
 
 clearInterval(timer);
 nextQuestion();
@@ -243,10 +190,7 @@ return () => clearInterval(timer);
 
 }, [current, questions, nextQuestion]);
 
-
-
-// ---------------- RECORD TIMER ----------------
-
+// RECORD TIMER
 useEffect(() => {
 
 let interval;
@@ -271,13 +215,20 @@ return () => clearInterval(interval);
 
 }, [recording, recordingStartTime]);
 
-
-
-// ---------------- SUBMIT TEST ----------------
-
+// SUBMIT TEST
 const submitTest = async () => {
 
 await uploadAnswer();
+
+await fetch(
+`${API_BASE_URL}/tests/${id}/submit`,
+{
+method: "POST",
+headers: {
+Authorization: `Bearer ${token}`
+}
+}
+);
 
 Swal.fire({
 icon: "success",
@@ -288,10 +239,7 @@ navigate(`/report/${id}`);
 
 };
 
-
-
-// ---------------- LOADING ----------------
-
+// LOADING
 if (!questions.length) {
 
 return (
@@ -306,10 +254,7 @@ Loading questions...
 
 const q = questions[current];
 
-
-
-// ---------------- UI ----------------
-
+// UI
 return (
 
 <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-black to-purple-900 text-white">
@@ -318,13 +263,16 @@ return (
 initial={{ opacity: 0, scale: 0.9 }}
 animate={{ opacity: 1, scale: 1 }}
 className="w-[700px]"
+
 >
 
 <motion.h1
 initial={{ y: -40, opacity: 0 }}
 animate={{ y: 0, opacity: 1 }}
 className="text-4xl font-bold text-center mb-8"
+
 >
+
 SpeakForge AI Speaking Test
 </motion.h1>
 
@@ -354,10 +302,6 @@ Question {current + 1} / {questions.length}
 ⏱ {timeLeft}s
 </p>
 
-
-
-{/* AUDIO QUESTION */}
-
 {q.question_type === "audio" && (
 
 <div>
@@ -367,18 +311,20 @@ Question {current + 1} / {questions.length}
 <button
 onClick={startRecording}
 className="bg-green-500 px-6 py-2 rounded-lg hover:bg-green-600"
+
 >
-Start Recording 🎤
-</button>
+
+Start Recording 🎤 </button>
 
 ) : (
 
 <button
 onClick={stopRecording}
 className="bg-red-500 px-6 py-2 rounded-lg hover:bg-red-600"
+
 >
-Stop Recording
-</button>
+
+Stop Recording </button>
 
 )}
 
@@ -404,10 +350,6 @@ className="w-full mt-4"
 
 )}
 
-
-
-{/* TEXT QUESTION */}
-
 {q.question_type === "text" && (
 
 <textarea
@@ -421,9 +363,6 @@ className="w-full p-3 rounded-lg text-white bg-gray-800 border border-gray-600"
 )}
 
 
-
-{/* AI LOADING */}
-
 {loadingAI && (
 
 <div className="text-center mt-4">
@@ -431,7 +370,6 @@ className="w-full p-3 rounded-lg text-white bg-gray-800 border border-gray-600"
 </div>
 
 )}
-
 
 
 <div className="flex gap-4 mt-6">

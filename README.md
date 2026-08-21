@@ -32,7 +32,7 @@ A comprehensive AI-powered speaking evaluation system built with FastAPI backend
 ## 📋 Prerequisites
 
 - Python 3.8+
-- Node.js 16+
+- Node.js 14+
 - npm or yarn
 
 ## 🚀 Quick Start
@@ -88,8 +88,8 @@ A comprehensive AI-powered speaking evaluation system built with FastAPI backend
 ### Environment Variables (.env)
 
 ```env
-# Database Configuration
-DATABASE_URL=sqlite:///./speakforge.db
+# Database Configuration (local MySQL)
+DATABASE_URL=mysql+pymysql://root:0404@localhost:3306/speakforge
 
 # JWT Configuration
 SECRET_KEY=your_super_secret_key_here
@@ -116,6 +116,7 @@ ALLOWED_ORIGINS=["http://localhost:3000", "http://127.0.0.1:3000"]
 - `GET /tests/` - Get all tests
 - `GET /tests/{id}` - Get test details
 - `GET /tests/{id}/questions` - Get test questions
+- `GET /tests/report/{id}` - Get the authenticated user's evaluation report
 - `POST /tests/submit-answer/{question_id}` - Submit audio answer
 - `POST /tests/submit-text-answer/{question_id}` - Submit text answer
 

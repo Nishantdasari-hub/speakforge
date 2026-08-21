@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import Swal from "sweetalert2";
+import { API_BASE_URL } from "../config";
 
 export default function AdminTests() {
 
@@ -13,27 +14,20 @@ export default function AdminTests() {
 
   const token = localStorage.getItem("token");
 
-  const loadTests = useCallback(async () => {
-    const res = await fetch("http://127.0.0.1:8000/tests/", {
+  const loadTests = async () => {
+    const res = await fetch(`${API_BASE_URL}/tests/`, {
       headers: {
         Authorization: `Bearer ${token}`
       }
     });
 
     const data = await res.json();
-    setTests(Array.isArray(data) ? data : []);
-  }, [token]);
+    setTests(data);
+  };
 
-  useEffect(() => {
-    fetch("http://127.0.0.1:8000/tests/", {
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
-    })
-      .then(res => res.json())
-      .then(data => setTests(Array.isArray(data) ? data : []))
-      .catch(err => console.error(err));
-  }, [token]);
+useEffect(() => {
+    loadTests();
+  }, []);
 
   const createTest = async () => {
     if (!title) {
@@ -41,7 +35,7 @@ export default function AdminTests() {
       return;
     }
 
-    await fetch("http://127.0.0.1:8000/tests/", {
+    await fetch(`${API_BASE_URL}/tests/`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -71,7 +65,7 @@ export default function AdminTests() {
     if (!confirm.isConfirmed) return;
 
     try {
-      const response = await fetch(`http://127.0.0.1:8000/tests/${id}`, {
+      const response = await fetch(`${API_BASE_URL}/tests/${id}`, {
         method: "DELETE",
         headers: {
           Authorization: `Bearer ${token}`
@@ -84,7 +78,7 @@ export default function AdminTests() {
       } else {
         Swal.fire("Error", "Failed to delete test", "error");
       }
-    } catch {
+    } catch (error) {
       Swal.fire("Error", "Network error", "error");
     }
   };
@@ -101,7 +95,7 @@ export default function AdminTests() {
     if (!editingId) return;
 
     try {
-      const response = await fetch(`http://127.0.0.1:8000/tests/${editingId}`, {
+      const response = await fetch(`${API_BASE_URL}/tests/${editingId}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -120,7 +114,7 @@ export default function AdminTests() {
       } else {
         Swal.fire("Error", "Failed to update test", "error");
       }
-    } catch {
+    } catch (error) {
       Swal.fire("Error", "Network error", "error");
     }
   };

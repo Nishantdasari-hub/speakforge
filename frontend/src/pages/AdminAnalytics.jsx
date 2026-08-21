@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
+import { API_BASE_URL } from "../config";
 import {
 BarChart,
 Bar,
@@ -29,7 +30,7 @@ const fetchAnalytics = async () => {
   try {
 
     const res = await fetch(
-      "http://127.0.0.1:8000/tests/admin/analytics",
+      `${API_BASE_URL}/tests/admin/analytics`,
       {
         headers: {
           Authorization: `Bearer ${token}`

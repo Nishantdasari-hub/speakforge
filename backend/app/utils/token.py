@@ -1,11 +1,6 @@
 from jose import jwt
 from datetime import datetime, timedelta
-import os  
-from dotenv import load_dotenv
-
-load_dotenv()
-
-SECRET_KEY = os.getenv("SECRET_KEY", "SUPER_SECRET_DEV_KEY")
+from app.config import SECRET_KEY
 ALGORITHM = "HS256"
 
 def create_verification_token(email: str):

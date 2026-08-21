@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import Swal from "sweetalert2";
+import { API_BASE_URL } from "../config";
 
 function Login() {
 
@@ -15,7 +16,7 @@ function Login() {
 
     try {
 
-      const response = await fetch("http://127.0.0.1:8000/auth/login", {
+      const response = await fetch(`${API_BASE_URL}/auth/login`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
@@ -89,11 +90,21 @@ function Login() {
         <input
           type="password"
           placeholder="Password"
-          className="w-full p-3 mb-4 rounded bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full p-3 mb-2 rounded bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
         />
+
+        {/* Forgot Password Link */}
+        <div className="text-right mb-4">
+          <Link
+            to="/forgot-password"
+            className="text-blue-400 text-sm hover:underline"
+          >
+            Forgot Password?
+          </Link>
+        </div>
 
         <motion.button
           whileHover={{ scale: 1.05 }}

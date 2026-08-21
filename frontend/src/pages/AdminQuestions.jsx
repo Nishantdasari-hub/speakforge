@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import Swal from "sweetalert2";
+import { API_BASE_URL } from "../config";
 
 export default function AdminQuestions() {
 
@@ -21,21 +22,20 @@ export default function AdminQuestions() {
 
   // Load Tests
   useEffect(() => {
-    fetch("http://127.0.0.1:8000/tests/", {
+    fetch(`${API_BASE_URL}/tests/`, {
       headers: {
         Authorization: `Bearer ${token}`
       }
     })
       .then(res => res.json())
-      .then(data => setTests(Array.isArray(data) ? data : []))
-      .catch(err => console.error(err));
-  }, [token]);
+      .then(data => setTests(data));
+  }, []);
 
 
   // Load Questions
   const loadQuestions = async (testId) => {
 
-    const res = await fetch(`http://127.0.0.1:8000/tests/${testId}/questions`, {
+    const res = await fetch(`${API_BASE_URL}/tests/${testId}/questions`, {
       headers: {
         Authorization: `Bearer ${token}`
       }
@@ -66,7 +66,7 @@ export default function AdminQuestions() {
       return;
     }
 
-    await fetch(`http://127.0.0.1:8000/tests/${selectedTest}/questions`, {
+    const res = await fetch(`${API_BASE_URL}/tests/${selectedTest}/questions`, {
 
       method: "POST",
 
@@ -104,7 +104,7 @@ export default function AdminQuestions() {
 
     if (!confirm.isConfirmed) return;
 
-    const res = await fetch(`http://127.0.0.1:8000/tests/${selectedTest}/questions/${id}`, {
+    const res = await fetch(`${API_BASE_URL}/tests/${selectedTest}/questions/${id}`, {
       method: "DELETE",
       headers: {
         Authorization: `Bearer ${token}`
@@ -139,7 +139,7 @@ export default function AdminQuestions() {
   // Save Edit
   const saveEditQuestion = async () => {
 
-    const res = await fetch(`http://127.0.0.1:8000/tests/${selectedTest}/questions/${editingId}`, {
+    const res = await fetch(`${API_BASE_URL}/tests/${selectedTest}/questions/${editingId}`, {
 
       method: "PUT",
 

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import Swal from "sweetalert2";
+import { API_BASE_URL } from "../config";
 
 export default function UserDashboardSimple() {
   const [tests, setTests] = useState([]);
@@ -18,13 +19,13 @@ export default function UserDashboardSimple() {
         console.log("Loading dashboard data...");
         
         // Simple fetch with full error handling
-        const testsResponse = await fetch("http://127.0.0.1:8000/tests");
+        const testsResponse = await fetch(`${API_BASE_URL}/tests`);
         const testsData = await testsResponse.json();
         setTests(testsData || []);
         console.log("Tests loaded:", testsData);
 
         if (token) {
-          const statsResponse = await fetch("http://127.0.0.1:8000/tests/me/dashboard", {
+          const statsResponse = await fetch(`${API_BASE_URL}/tests/me/dashboard`, {
             headers: { Authorization: `Bearer ${token}` }
           });
           
@@ -36,7 +37,7 @@ export default function UserDashboardSimple() {
             console.error("Stats error:", statsResponse.status);
           }
 
-          const answersResponse = await fetch("http://127.0.0.1:8000/tests/me/answers", {
+          const answersResponse = await fetch(`${API_BASE_URL}/tests/me/answers`, {
             headers: { Authorization: `Bearer ${token}` }
           });
           

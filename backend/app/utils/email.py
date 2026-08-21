@@ -1,35 +1,69 @@
-import os
-
 from fastapi_mail import FastMail, MessageSchema
+from pydantic import EmailStr
+from app.email_id import conf
+from app.config import BACKEND_URL
 
-from app.email_id import conf, MAIL_ENABLED
 
+# ===============================
+# EMAIL VERIFICATION
+# ===============================
 
-async def send_verification_email(email: str, token: str):
-
-    backend_url = os.getenv("BACKEND_URL", "http://127.0.0.1:8000")
-    verification_link = f"{backend_url}/auth/verify-email?token={token}"
-
-    if not MAIL_ENABLED:
-        print(f"[SpeakForge] SMTP not configured. Verification link for {email}: {verification_link}")
+async def send_verification_email(email: EmailStr, token: str):
+    if not conf:
+        print("Email not configured - skipping verification email")
         return
+
+    verification_link = f"{BACKEND_URL}/auth/verify-email?token={token}"
 
     message = MessageSchema(
         subject="Verify your SpeakForge account",
         recipients=[email],
         body=f"""
-        <h2>Welcome to SpeakForge</h2>
-        <p>Please click the button below to verify your email:</p>
+Welcome to SpeakForge!
 
-        <a href="{verification_link}" 
-        style="background:#4CAF50;color:white;padding:10px 20px;text-decoration:none;border-radius:5px;">
-        Verify Email
-        </a>
+Please verify your email by clicking the link below:
 
-        <p>If the button doesn't work, copy this link:</p>
-        <p>{verification_link}</p>
-        """,
-        subtype="html"
+{verification_link}
+
+If you did not create this account, please ignore this email.
+
+SpeakForge Team
+""",
+        subtype="plain"
+    )
+
+    fm = FastMail(conf)
+    await fm.send_message(message)
+
+
+# ===============================
+# RESET PASSWORD EMAIL
+# ===============================
+
+async def send_reset_password_email(email: EmailStr, reset_link: str):
+    if not conf:
+        print("Email not configured - skipping password reset email")
+        return
+
+    message = MessageSchema(
+        subject="SpeakForge Password Reset",
+        recipients=[email],
+        body=f"""
+Hello,
+
+You requested to reset your password.
+
+Click the link below to reset it:
+
+{reset_link}
+
+This link will expire in 30 minutes.
+
+If you did not request this, please ignore this email.
+
+SpeakForge Team
+""",
+        subtype="plain"
     )
 
     fm = FastMail(conf)

@@ -1,4 +1,5 @@
 import os
+import secrets
 from jose import jwt, JWTError
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
@@ -10,6 +11,10 @@ from dotenv import load_dotenv
 from app.utils.token import SECRET_KEY, ALGORITHM, create_verification_token
 from app.utils.email import send_verification_email
 from fastapi.responses import RedirectResponse
+from datetime import datetime, timedelta
+from app.services import auth_service
+from app.utils.email import send_verification_email, send_reset_password_email
+from app.config import FRONTEND_URL
 
 load_dotenv()
 
@@ -71,10 +76,7 @@ async def register_user(request: RegisterRequest, db: Session = Depends(get_db))
 
     token = create_verification_token(new_user.email)
 
-    try:
-        await send_verification_email(new_user.email, token)
-    except Exception as e:
-        print(f"[SpeakForge] Failed to send verification email: {e}")
+    await send_verification_email(new_user.email, token)
 
     return {
         "message": "User registered successfully",
@@ -106,9 +108,7 @@ def verify_email(token: str, db: Session = Depends(get_db)):
     user.is_verified = True
     db.commit()
 
-    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
-
-    return RedirectResponse(url=f"{frontend_url}/login")
+    return RedirectResponse(url=f"{FRONTEND_URL}/login")
 # ---------------- LOGIN ---------------- #
 
 @router.post("/login")
@@ -137,3 +137,31 @@ def login_user(request: LoginRequest, db: Session = Depends(get_db)):
         "role": user.role,
         "user_id": user.id
     }
+
+class ForgotPasswordRequest(BaseModel):
+    email: str
+
+@router.post("/forgot-password")
+async def forgot_password(data: ForgotPasswordRequest, db: Session = Depends(get_db)):
+
+    token = auth_service.forgot_password(data.email, db)
+
+    if token:
+        reset_link = f"{FRONTEND_URL}/reset-password/{token}"
+        await send_reset_password_email(data.email, reset_link)
+
+    return {"message": "If the email exists, a reset link was sent"}
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str
+
+@router.post("/reset-password")
+def reset_password(data: ResetPasswordRequest, db: Session = Depends(get_db)):
+
+    success = auth_service.reset_password(data.token, data.new_password, db)
+
+    if not success:
+        raise HTTPException(status_code=400, detail="Invalid or expired token")
+
+    return {"message": "Password reset successful"}

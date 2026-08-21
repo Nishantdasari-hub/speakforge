@@ -7,21 +7,19 @@ from sqlalchemy.orm import Session
 from app.database import SessionLocal
 from app import models
 import os
-from dotenv import load_dotenv
-
-load_dotenv()
+import secrets
+from app.config import SECRET_KEY
 
 # ==============================
 # CONFIG
 # ==============================
 
-SECRET_KEY = os.getenv("SECRET_KEY", "SUPER_SECRET_DEV_KEY")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
 
 # ==============================
@@ -57,6 +55,13 @@ def create_access_token(data: dict):
     expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+
+
+def generate_reset_token():
+    return secrets.token_urlsafe(32)
+
+def token_expiry():
+    return datetime.utcnow() + timedelta(minutes=30)
 
 
 # ==============================
@@ -101,3 +106,39 @@ def get_current_admin(current_user: models.User = Depends(get_current_user)):
             detail="Admin privileges required"
         )
     return current_user
+
+
+def forgot_password(email, db):
+
+    user = db.query(models.User).filter(models.User.email == email).first()
+
+    if not user:
+        return None
+
+    token = generate_reset_token()
+
+    user.reset_token = token
+    user.reset_token_expiry = token_expiry()
+
+    db.commit()
+
+    return token
+
+def reset_password(token, new_password, db):
+
+    user = db.query(models.User).filter(models.User.reset_token == token).first()
+
+    if not user:
+        return False
+
+    if user.reset_token_expiry < datetime.utcnow():
+        return False
+
+    user.password = hash_password(new_password)
+
+    user.reset_token = None
+    user.reset_token_expiry = None
+
+    db.commit()
+
+    return True

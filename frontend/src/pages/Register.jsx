@@ -2,8 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import Swal from "sweetalert2";
-
-const BASE_URL = "http://127.0.0.1:8000";
+import { API_BASE_URL } from "../config";
 
 export default function Register() {
 
@@ -37,7 +36,7 @@ export default function Register() {
 
     try {
 
-      const res = await fetch(`${BASE_URL}/auth/register`, {
+      const res = await fetch(`${API_BASE_URL}/auth/register`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json"

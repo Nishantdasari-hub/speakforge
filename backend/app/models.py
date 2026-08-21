@@ -21,6 +21,8 @@ class User(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     answers = relationship("QuestionAnswer", back_populates="user")
+    reset_token = Column(String(255), nullable=True)
+    reset_token_expiry = Column(DateTime, nullable=True)
 
 
 # -------------------- TEST --------------------

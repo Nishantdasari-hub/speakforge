@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { FaUser, FaQuestion, FaClipboardList, FaChartLine } from "react-icons/fa";
+import { API_BASE_URL } from "../config";
 
 export default function AdminDashboard() {
 
@@ -23,7 +24,7 @@ export default function AdminDashboard() {
       try {
 
         const res = await fetch(
-          "http://127.0.0.1:8000/tests/admin/analytics",
+          `${API_BASE_URL}/tests/admin/analytics`,
           {
             headers: {
               Authorization: `Bearer ${token}`

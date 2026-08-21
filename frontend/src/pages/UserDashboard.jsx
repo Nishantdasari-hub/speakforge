@@ -82,7 +82,9 @@ export default function UserDashboard() {
   }, []);
 
   const chartData = recentAnswers.map((ans) => ({
-    name: `Q${ans.question_id || 0}`,
+    name: ans.question_text
+      ? ans.question_text.slice(0,20)
+      : `Q${ans.question_id || 0}`,
     score: ans.final_score || 0
   }));
 
@@ -98,7 +100,7 @@ export default function UserDashboard() {
 
     <div className="min-h-screen bg-gradient-to-br from-black via-gray-900 to-black p-10">
 
-      {/* SpeakForge Title */}
+      {/* Title */}
       <motion.div
         initial={{ opacity: 0, y: -40 }}
         animate={{ opacity: 1, y: 0 }}
@@ -115,7 +117,7 @@ export default function UserDashboard() {
 
       </motion.div>
 
-      {/* Dashboard Stats */}
+      {/* Stats */}
       {stats && (
 
         <motion.div
@@ -157,7 +159,7 @@ export default function UserDashboard() {
 
       )}
 
-      {/* Available Tests */}
+      {/* Tests */}
       <motion.h1
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -236,8 +238,8 @@ export default function UserDashboard() {
 
                 <div>
 
-                  <p className="text-gray-300">
-                    Question ID: {ans.question_id}
+                  <p className="text-gray-300 font-medium">
+                    {ans.question_text || `Question ${ans.question_id}`}
                   </p>
 
                   <p className="text-gray-500 text-sm">
@@ -260,7 +262,6 @@ export default function UserDashboard() {
 
           </div>
 
-          {/* View Full Results Button */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
