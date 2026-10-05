@@ -190,9 +190,18 @@ include the hosted frontend URL in the backend's `ALLOWED_ORIGINS` and
 
 ## Scoring and attempts
 
-Scores are **practice estimates out of 10**, identified as `practice-v1`. They are
-not calibrated IELTS/CEFR bands. Grammar starts at 10 and subtracts 20 times the LanguageTool error-to-word ratio,
-clamped to 0–10 and rounded.
+Scores are **practice estimates out of 10**, identified in feedback as `practice-v2`.
+They are not calibrated IELTS/CEFR bands. LanguageTool checks are supplemented by
+narrow subject–verb agreement and redundant comparative rules; overlapping matches
+are counted once. Grammar starts at 10 and subtracts
+`errors * (0.75 + 25 / min(words, 100))`, clamped to 0–10 and rounded.
+Every issue has a fixed penalty, so longer answers cannot erase detected errors.
+Overall scoring weights grammar at 70% and length/pace at 30%; when issues are
+detected, the overall score cannot exceed the grammar score. Feedback includes
+up to four detected excerpts and suggested corrections. This is an uncalibrated
+practice rubric, not a claim to catch every mistake. Speech recognition can alter
+spoken errors; grammar is evaluated on the transcript, not directly on the audio.
+Previously completed reports retain their stored scores; retakes use the new rubric.
 Speaking fluency estimates length and pace; writing fluency estimates length and
 sentence structure. Short responses are capped; silence receives a completed zero
 score. Relevance, factual correctness, pronunciation, and accent fairness are not
