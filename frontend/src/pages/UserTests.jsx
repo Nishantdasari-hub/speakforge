@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { API_BASE_URL } from "../config";
+import { getTests } from "../api";
 
 export default function UserTests() {
 
+  const [error, setError] = useState("");
   const [tests, setTests] = useState([]);
   const navigate = useNavigate();
 
@@ -11,13 +12,7 @@ export default function UserTests() {
 
   useEffect(() => {
 
-    fetch(`${API_BASE_URL}/tests/`, {
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
-    })
-      .then(res => res.json())
-      .then(data => setTests(data));
+    getTests().then(setTests).catch(err => setError(err.message));
 
   }, [token]);
 
@@ -29,6 +24,7 @@ export default function UserTests() {
         Available Tests
       </h1>
 
+      {error && <p role="alert">{error}</p>}
       <div className="test-grid">
 
         {tests.map(test => (
@@ -55,7 +51,7 @@ export default function UserTests() {
               </button>
               
               <button
-                onClick={() => navigate(`/results/${test.id}`)}
+                onClick={() => navigate(`/report/${test.id}`)}
                 className="btn-secondary"
               >
                 My Results

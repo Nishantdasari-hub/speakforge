@@ -1,18 +1,9 @@
-from jose import jwt
 from datetime import datetime, timedelta
+import jwt
 from app.config import SECRET_KEY
+
 ALGORITHM = "HS256"
 
-def create_verification_token(email: str):
 
-    payload = {
-        "email": email,
-        "exp": datetime.utcnow() + timedelta(hours=24)
-    }
-
-    token = jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
-
-    return token
-
-# import secrets
-# print(secrets.token_hex(32)) //for generate secret key
+def create_verification_token(email):
+    return jwt.encode({"email":email,"purpose":"verify","exp":datetime.utcnow() + timedelta(hours=24)}, SECRET_KEY, algorithm=ALGORITHM)

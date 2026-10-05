@@ -1,6 +1,6 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field, ConfigDict
 from typing import List
-from typing import Optional
+from typing import Optional, Literal
 from datetime import datetime
 
 
@@ -32,10 +32,12 @@ class UserResponse(BaseModel):
 # ================== QUESTION ==================
 
 class QuestionCreate(BaseModel):
-    question_text: str
-    question_type: str
-    time_limit: int
-    order_number: int
+    question_text: str = Field(min_length=1, max_length=2000)
+    question_type: Literal["text", "audio"]
+    time_limit: int = Field(ge=5, le=300)
+    order_number: int = Field(ge=1, le=1000)
+
+    model_config = ConfigDict(str_strip_whitespace=True)
 
 
 class QuestionResponse(BaseModel):
@@ -45,14 +47,15 @@ class QuestionResponse(BaseModel):
     time_limit: Optional[int] = None
     order_number: Optional[int] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 # ================== TEST ==================
 
 class TestCreate(BaseModel):
-    title: str
-    description: str
+    title: str = Field(min_length=1, max_length=255)
+    description: str = Field(default="", max_length=500)
+
+    model_config = ConfigDict(str_strip_whitespace=True)
 
 
 class TestResponse(BaseModel):
@@ -103,8 +106,7 @@ class ResultResponse(BaseModel):
     evaluation: Optional[dict] = None
     submitted_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class TextAnswer(BaseModel):
     answer: str

@@ -26,5 +26,11 @@ if not DATABASE_URL:
 if not SECRET_KEY:
     raise RuntimeError("SECRET_KEY must be configured")
 
-if ENVIRONMENT == "production" and SECRET_KEY == "SUPER_SECRET_DEV_KEY":
-    raise RuntimeError("A production SECRET_KEY is required")
+if ENVIRONMENT == "production":
+    if len(SECRET_KEY) < 32 or SECRET_KEY in {
+        "SUPER_SECRET_DEV_KEY", "generate-a-long-random-secret"
+    }:
+        raise RuntimeError("Set a random production SECRET_KEY of at least 32 characters")
+    admin_secret = os.getenv("ADMIN_SECRET_KEY", "")
+    if admin_secret and (len(admin_secret) < 32 or admin_secret == "generate-a-separate-admin-secret"):
+        raise RuntimeError("Set a random production ADMIN_SECRET_KEY of at least 32 characters")

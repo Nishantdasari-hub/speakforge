@@ -18,6 +18,7 @@ module.exports = {
     react: { version: 'detect' },
   },
   plugins: ['react'],
+  overrides: [{ files: ['*.config.js', '*.cjs'], env: { node: true } }],
   rules: {
     'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
     'react/react-in-jsx-scope': 'off',

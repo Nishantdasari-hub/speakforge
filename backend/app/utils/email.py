@@ -10,8 +10,7 @@ from app.config import BACKEND_URL
 
 async def send_verification_email(email: EmailStr, token: str):
     if not conf:
-        print("Email not configured - skipping verification email")
-        return
+        raise RuntimeError("Email is not configured")
 
     verification_link = f"{BACKEND_URL}/auth/verify-email?token={token}"
 
@@ -42,8 +41,7 @@ SpeakForge Team
 
 async def send_reset_password_email(email: EmailStr, reset_link: str):
     if not conf:
-        print("Email not configured - skipping password reset email")
-        return
+        raise RuntimeError("Email is not configured")
 
     message = MessageSchema(
         subject="SpeakForge Password Reset",

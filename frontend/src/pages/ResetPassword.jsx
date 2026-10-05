@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import Swal from "sweetalert2";
 import { API_BASE_URL } from "../config";
+import { errorMessage } from "../api";
 
 function ResetPassword() {
 
@@ -33,9 +34,7 @@ function ResetPassword() {
         Swal.fire({
           icon: "error",
           title: "Reset Failed",
-          text: typeof data.detail === "string"
-            ? data.detail
-            : "Invalid or expired reset link"
+          text: errorMessage(data, "Invalid or expired reset link")
         });
         return;
       }
@@ -81,8 +80,10 @@ function ResetPassword() {
 
         <input
           type="password"
+            minLength={8}
+            maxLength={72}
           placeholder="New Password"
-          className="w-full p-3 mb-6 rounded bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full p-3 mb-6 rounded bg-gray-200 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required

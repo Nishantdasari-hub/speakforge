@@ -1,11 +1,14 @@
 {
-    email admin@example.com
+    email {$ACME_EMAIL}
 }
 
-app.example.com {
+{$FRONTEND_URL} {
     reverse_proxy frontend:80
 }
 
-api.example.com {
+{$BACKEND_URL} {
+    request_body {
+        max_size 12MB
+    }
     reverse_proxy backend:8000
 }

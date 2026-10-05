@@ -77,7 +77,7 @@ function ForgotPassword() {
         <input
           type="email"
           placeholder="Enter your email"
-          className="w-full p-3 mb-6 rounded bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full p-3 mb-6 rounded bg-gray-200 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required

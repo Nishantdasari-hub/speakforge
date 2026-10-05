@@ -7,8 +7,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.routes import report
 from app.config import ALLOWED_ORIGINS
 from sqlalchemy import text
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from app.limiter import limiter
 
 app = FastAPI(title="SpeakForge API")
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # CORS settings
 app.add_middleware(

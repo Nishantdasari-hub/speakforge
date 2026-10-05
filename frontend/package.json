@@ -6,24 +6,20 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "lint": "eslint .",
+    "lint": "eslint . --ext .js,.jsx,.cjs",
     "preview": "vite preview"
   },
   "dependencies": {
-    "@dnd-kit/core": "^6.3.1",
-    "@dnd-kit/sortable": "^10.0.0",
-    "@dnd-kit/utilities": "^3.2.2",
-    "axios": "^1.13.6",
     "framer-motion": "^12.35.1",
-    "lucide-react": "^0.577.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-icons": "^5.6.0",
-    "react-router-dom": "^6.22.3",
+    "react-router-dom": "7.18.4",
     "recharts": "^3.8.0",
     "sweetalert2": "^11.26.21"
   },
   "devDependencies": {
+    "@tailwindcss/postcss": "4.3.3",
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
     "@vitejs/plugin-react": "^4.0.0",
@@ -33,7 +29,7 @@
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-react-refresh": "^0.4.3",
     "postcss": "^8.4.23",
-    "tailwindcss": "^3.3.2",
-    "vite": "^4.3.9"
+    "tailwindcss": "4.3.3",
+    "vite": "6.4.3"
   }
 }

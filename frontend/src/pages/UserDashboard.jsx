@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import Swal from "sweetalert2";
 import { getTests, getDashboardStats, getRecentAnswers } from "../api";
@@ -99,6 +99,10 @@ export default function UserDashboard() {
   return (
 
     <div className="min-h-screen bg-gradient-to-br from-black via-gray-900 to-black p-10">
+      <nav className="flex gap-6 text-blue-400 mb-6">
+        <Link to="/tests">All Tests</Link><Link to="/my-results">Result History</Link>
+        <button onClick={() => { for (const key of ["token", "role", "userEmail"]) localStorage.removeItem(key); navigate("/login"); }}>Logout</button>
+      </nav>
 
       {/* Title */}
       <motion.div

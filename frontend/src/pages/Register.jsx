@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import Swal from "sweetalert2";
 import { API_BASE_URL } from "../config";
+import { errorMessage } from "../api";
 
 export default function Register() {
 
@@ -47,13 +48,13 @@ export default function Register() {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.detail || "Registration failed");
+        setError(errorMessage(data, "Registration failed"));
         return;
       }
 
       Swal.fire({
         title: "Registration Successful 🎉",
-        text: "Your account has been created. Please login.",
+        text: "Check your email and verify your account before logging in.",
         icon: "success",
         confirmButtonColor: "#2563eb"
       });
@@ -119,6 +120,8 @@ export default function Register() {
 
           <input
             type="password"
+            minLength={8}
+            maxLength={72}
             name="password"
             placeholder="Password"
             required
@@ -153,7 +156,7 @@ export default function Register() {
             <motion.input
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              type="text"
+              type="password"
               name="admin_key"
               placeholder="Enter Admin Secret Key"
               value={form.admin_key}

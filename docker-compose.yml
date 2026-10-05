@@ -18,28 +18,85 @@ services:
   backend:
     build: ./backend
     restart: unless-stopped
-    env_file: .env
     environment:
+      FORWARDED_ALLOW_IPS: "*"
+      ENVIRONMENT: production
+      UPLOAD_DIR: /data/uploads
+      XDG_CACHE_HOME: /data/cache
+      SECRET_KEY: ${SECRET_KEY:?Set SECRET_KEY}
+      ADMIN_SECRET_KEY: ${ADMIN_SECRET_KEY:?Set ADMIN_SECRET_KEY}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:?Set ALLOWED_ORIGINS}
+      MAIL_SERVER: ${MAIL_SERVER:-}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_FROM: ${MAIL_FROM:-}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      MAIL_STARTTLS: ${MAIL_STARTTLS:-True}
+      MAIL_SSL_TLS: ${MAIL_SSL_TLS:-False}
+      USE_CREDENTIALS: ${USE_CREDENTIALS:-True}
+      FRONTEND_URL: ${FRONTEND_URL:?Set FRONTEND_URL}
+      BACKEND_URL: ${BACKEND_URL:?Set BACKEND_URL}
       DATABASE_URL: mysql+pymysql://speakforge:${MYSQL_PASSWORD}@db:3306/speakforge
     depends_on:
       db:
         condition: service_healthy
     volumes:
       - uploads:/data/uploads
-    command: ["sh", "-c", "alembic upgrade head && gunicorn -k uvicorn.workers.UvicornWorker -w 2 -b 0.0.0.0:8000 app.main:app"]
+      - ai_cache:/data/cache
+    command: ["sh", "-c", "alembic upgrade head && exec gunicorn -k uvicorn.workers.UvicornWorker -w 1 --timeout 180 -b 0.0.0.0:8000 app.main:app"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=5)"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  worker:
+    build: ./backend
+    restart: unless-stopped
+    environment:
+      ENVIRONMENT: production
+      DATABASE_URL: mysql+pymysql://speakforge:${MYSQL_PASSWORD}@db:3306/speakforge
+      SECRET_KEY: ${SECRET_KEY:?Set SECRET_KEY}
+      UPLOAD_DIR: /data/uploads
+      XDG_CACHE_HOME: /data/cache
+    command: ["python", "-m", "app.worker"]
+    stop_grace_period: 120s
+    volumes:
+      - uploads:/data/uploads
+      - ai_cache:/data/cache
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import time,pathlib; assert time.time()-pathlib.Path('/tmp/speakforge-worker-heartbeat').stat().st_mtime < 660"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
 
   frontend:
     build:
       context: ./frontend
       args:
-        VITE_API_URL: ${VITE_API_URL:-http://localhost:8000}
+        VITE_API_URL: ${BACKEND_URL:?Set BACKEND_URL}
     restart: unless-stopped
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1/"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
 
   proxy:
     image: caddy:2.10-alpine
     restart: unless-stopped
+    environment:
+      ACME_EMAIL: ${ACME_EMAIL:?Set ACME_EMAIL}
+      FRONTEND_URL: ${FRONTEND_URL:?Set FRONTEND_URL}
+      BACKEND_URL: ${BACKEND_URL:?Set BACKEND_URL}
     ports:
       - "80:80"
       - "443:443"
@@ -48,11 +105,14 @@ services:
       - caddy_data:/data
       - caddy_config:/config
     depends_on:
-      - frontend
-      - backend
+      frontend:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
 
 volumes:
   mysql_data:
   uploads:
+  ai_cache:
   caddy_data:
   caddy_config:
