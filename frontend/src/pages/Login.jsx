@@ -3,6 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import Swal from "sweetalert2";
 import { API_BASE_URL } from "../config";
+import { errorMessage } from "../api";
 
 function Login() {
 
@@ -10,6 +11,15 @@ function Login() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+
+  const resendVerification = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/resend-verification`, {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({email})});
+      const data = await response.json();
+      if (!response.ok) throw new Error(errorMessage(data));
+      Swal.fire("Check your email", data.message, "success");
+    } catch (err) { Swal.fire("Could not resend", err.message, "error"); }
+  };
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -33,7 +43,7 @@ function Login() {
         Swal.fire({
           icon: "error",
           title: "Login Failed",
-          text: data.detail || "Login failed"
+          text: errorMessage(data, "Login failed")
         });
         return;
       }
@@ -81,7 +91,7 @@ function Login() {
         <input
           type="email"
           placeholder="Email"
-          className="w-full p-3 mb-4 rounded bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full p-3 mb-4 rounded bg-gray-200 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
@@ -90,12 +100,13 @@ function Login() {
         <input
           type="password"
           placeholder="Password"
-          className="w-full p-3 mb-2 rounded bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full p-3 mb-2 rounded bg-gray-200 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
         />
 
+        <button type="button" onClick={resendVerification} disabled={!email} className="text-blue-400 text-sm mb-3">Resend verification email</button>
         {/* Forgot Password Link */}
         <div className="text-right mb-4">
           <Link

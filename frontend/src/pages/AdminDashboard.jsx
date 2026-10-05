@@ -136,8 +136,7 @@ export default function AdminDashboard() {
         </h2>
 
         <p className="text-gray-400">
-          This section will show AI speaking analytics like
-          average score, attempts per test, and user progress.
+          Use View Analytics to see test, question, learner and submitted-attempt totals.
         </p>
 
       </div>

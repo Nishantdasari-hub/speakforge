@@ -1,11 +1,11 @@
 export default function Navbar() {
 
   const logout = () => {
-    localStorage.removeItem("token");
+    for (const key of ["token", "role", "userEmail"]) localStorage.removeItem(key);
     window.location.href = "/";
   };
 
-  const userEmail = localStorage.getItem("user_email") || "User";
+  const userEmail = localStorage.getItem("userEmail") || "User";
   const name = userEmail.split("@")[0];
 
   return (

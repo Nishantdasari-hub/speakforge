@@ -1,411 +1,61 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Swal from "sweetalert2";
-import { API_BASE_URL } from "../config";
+import { apiRequest } from "../api";
 
-export default function AdminQuestions() {
-
-  const token = localStorage.getItem("token");
-
-  const [tests, setTests] = useState([]);
-  const [selectedTest, setSelectedTest] = useState("");
-  const [questions, setQuestions] = useState([]);
-
-  const [questionText, setQuestionText] = useState("");
-  const [timeLimit, setTimeLimit] = useState(30);
-  const [questionType, setQuestionType] = useState("audio");
-
-  const [editingId, setEditingId] = useState(null);
-  const [editText, setEditText] = useState("");
-  const [editTimeLimit, setEditTimeLimit] = useState(30);
-  const [editType, setEditType] = useState("audio");
-
-
-  // Load Tests
-  useEffect(() => {
-    fetch(`${API_BASE_URL}/tests/`, {
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
-    })
-      .then(res => res.json())
-      .then(data => setTests(data));
-  }, []);
-
-
-  // Load Questions
-  const loadQuestions = async (testId) => {
-
-    const res = await fetch(`${API_BASE_URL}/tests/${testId}/questions`, {
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
-    });
-
-    const data = await res.json();
-    setQuestions(data);
+export default function AdminQuestions(){
+  const [tests,setTests]=useState([]);
+  const [selected,setSelected]=useState('');
+  const [questions,setQuestions]=useState([]);
+  const [text,setText]=useState('');
+  const [type,setType]=useState('audio');
+  const [limit,setLimit]=useState(30);
+  const [order,setOrder]=useState(1);
+  const [editing,setEditing]=useState(null);
+  const [error,setError]=useState('');
+  const [busy,setBusy]=useState(false);
+  const lock=useRef(false);
+  const reset=()=>{setText('');setEditing(null);setType('audio');setLimit(30);setOrder(1);};
+  useEffect(()=>{apiRequest('/tests/').then(setTests).catch(err=>setError(err.message));},[]);
+  const load=useCallback(async()=>{
+    if(selected)setQuestions(await apiRequest(`/tests/${selected}/questions`));
+  },[selected]);
+  useEffect(()=>{
+    const controller=new AbortController();setQuestions([]);reset();
+    if(selected)apiRequest(`/tests/${selected}/questions`,{signal:controller.signal}).then(setQuestions).catch(err=>{if(err.name!=='AbortError')setError(err.message);});
+    return()=>controller.abort();
+  },[selected]);
+  const save=async event=>{
+    event.preventDefault();if(lock.current)return;
+    lock.current=true;setBusy(true);setError('');
+    try{
+      await apiRequest(`/tests/${selected}/questions${editing?`/${editing}`:''}`,{method:editing?'PUT':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question_text:text,question_type:type,time_limit:Number(limit),order_number:Number(order)})});
+      reset();await load();
+    }catch(err){setError(err.message);}finally{lock.current=false;setBusy(false);}
   };
-
-
-  // Select Test
-  const handleTestSelect = (e) => {
-
-    const id = e.target.value;
-    setSelectedTest(id);
-    setQuestions([]);
-
-    if (id) loadQuestions(id);
-
+  const remove=async id=>{
+    if(lock.current)return;
+    const choice=await Swal.fire({title:'Delete Question?',icon:'warning',showCancelButton:true});
+    if(!choice.isConfirmed)return;
+    lock.current=true;setBusy(true);setError('');
+    try{await apiRequest(`/tests/${selected}/questions/${id}`,{method:'DELETE'});if(editing===id)reset();await load();}
+    catch(err){setError(err.message);}finally{lock.current=false;setBusy(false);}
   };
-
-
-  // Create Question
-  const createQuestion = async () => {
-
-    if (!questionText) {
-      Swal.fire("Error", "Question text required", "error");
-      return;
-    }
-
-    const res = await fetch(`${API_BASE_URL}/tests/${selectedTest}/questions`, {
-
-      method: "POST",
-
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`
-      },
-
-      body: JSON.stringify({
-        question_text: questionText,
-        time_limit: timeLimit,
-        question_type: questionType,
-        order_number: questions.length + 1
-      })
-
-    });
-
-    setQuestionText("");
-
-    loadQuestions(selectedTest);
-
-    Swal.fire("Success", "Question created", "success");
-
-  };
-
-
-  // Delete Question
-  const deleteQuestion = async (id) => {
-
-    const confirm = await Swal.fire({
-      title: "Delete Question?",
-      icon: "warning",
-      showCancelButton: true
-    });
-
-    if (!confirm.isConfirmed) return;
-
-    const res = await fetch(`${API_BASE_URL}/tests/${selectedTest}/questions/${id}`, {
-      method: "DELETE",
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
-    });
-
-    if (res.ok) {
-
-      loadQuestions(selectedTest);
-      Swal.fire("Deleted", "Question removed", "success");
-
-    } else {
-
-      Swal.fire("Error", "Delete failed", "error");
-
-    }
-
-  };
-
-
-  // Start Edit
-  const startEditQuestion = (q) => {
-
-    setEditingId(q.id);
-    setEditText(q.question_text);
-    setEditTimeLimit(q.time_limit);
-    setEditType(q.question_type);
-
-  };
-
-
-  // Save Edit
-  const saveEditQuestion = async () => {
-
-    const res = await fetch(`${API_BASE_URL}/tests/${selectedTest}/questions/${editingId}`, {
-
-      method: "PUT",
-
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`
-      },
-
-      body: JSON.stringify({
-        question_text: editText,
-        time_limit: parseInt(editTimeLimit),
-        question_type: editType,
-        order_number: questions.find(q => q.id === editingId)?.order_number || 1
-      })
-
-    });
-
-    if (res.ok) {
-
-      loadQuestions(selectedTest);
-      setEditingId(null);
-
-      Swal.fire("Updated", "Question updated", "success");
-
-    } else {
-
-      Swal.fire("Error", "Update failed", "error");
-
-    }
-
-  };
-
-
-  const cancelEdit = () => {
-    setEditingId(null);
-  };
-
-
-  return (
-
-    <div className="min-h-screen bg-gray-900 text-white p-6">
-
-      <div className="max-w-6xl mx-auto space-y-8">
-
-
-        {/* ================= HEADER ================= */}
-
-        <div className="bg-gray-800 p-6 rounded-lg border border-gray-700">
-
-          <h1 className="text-2xl font-bold mb-4">
-            📝 Manage Questions
-          </h1>
-
-          <label className="text-gray-300 block mb-2">
-            Select Test
-          </label>
-
-          <select
-            value={selectedTest}
-            onChange={handleTestSelect}
-            className="w-full p-3 bg-gray-700 border border-gray-600 rounded"
-          >
-
-            <option value="">Choose Test</option>
-
-            {tests.map(test => (
-
-              <option key={test.id} value={test.id}>
-                {test.title}
-              </option>
-
-            ))}
-
-          </select>
-
-        </div>
-
-
-        {/* ================= CREATE QUESTION ================= */}
-
-        {selectedTest && (
-
-          <div className="bg-gray-800 p-6 rounded-lg border border-blue-600">
-
-            <h2 className="text-xl font-semibold mb-4">
-              ➕ Create New Question
-            </h2>
-
-            <textarea
-              value={questionText}
-              onChange={(e) => setQuestionText(e.target.value)}
-              placeholder="Enter question text..."
-              className="w-full p-4 bg-gray-700 border border-gray-600 rounded mb-4"
-              rows="4"
-            />
-
-            <div className="grid grid-cols-2 gap-4 mb-4">
-
-              <input
-                type="number"
-                value={timeLimit}
-                onChange={(e) => setTimeLimit(e.target.value)}
-                className="p-3 bg-gray-700 border border-gray-600 rounded"
-              />
-
-              <select
-                value={questionType}
-                onChange={(e) => setQuestionType(e.target.value)}
-                className="p-3 bg-gray-700 border border-gray-600 rounded"
-              >
-
-                <option value="audio">🎤 Audio Question</option>
-                <option value="text">📝 Text Question</option>
-
-              </select>
-
-            </div>
-
-            <button
-              onClick={createQuestion}
-              className="bg-blue-600 px-6 py-3 rounded hover:bg-blue-700"
-            >
-              Create Question
-            </button>
-
-          </div>
-
-        )}
-
-
-        {/* ================= QUESTIONS LIST ================= */}
-
-        <div className="bg-gray-800 p-6 rounded-lg border border-gray-700">
-
-          <h2 className="text-xl font-semibold mb-6">
-            📋 Questions List
-          </h2>
-
-
-          {questions.length > 0 ? (
-
-            <div className="space-y-4">
-
-              {questions.map(q => (
-
-                <div
-                  key={q.id}
-                  className="bg-gray-700 p-4 rounded flex justify-between"
-                >
-
-                  {editingId === q.id ? (
-
-                    <div className="w-full">
-
-                      <textarea
-                        value={editText}
-                        onChange={(e) => setEditText(e.target.value)}
-                        className="w-full p-3 bg-gray-600 rounded mb-3"
-                      />
-
-                      <div className="flex gap-3 mb-3">
-
-                        <input
-                          type="number"
-                          value={editTimeLimit}
-                          onChange={(e) => setEditTimeLimit(e.target.value)}
-                          className="p-2 bg-gray-600 rounded"
-                        />
-
-                        <select
-                          value={editType}
-                          onChange={(e) => setEditType(e.target.value)}
-                          className="p-2 bg-gray-600 rounded"
-                        >
-
-                          <option value="audio">Audio</option>
-                          <option value="text">Text</option>
-
-                        </select>
-
-                      </div>
-
-                      <div className="flex gap-2">
-
-                        <button
-                          onClick={saveEditQuestion}
-                          className="bg-green-600 px-4 py-2 rounded"
-                        >
-                          Save
-                        </button>
-
-                        <button
-                          onClick={cancelEdit}
-                          className="bg-gray-500 px-4 py-2 rounded"
-                        >
-                          Cancel
-                        </button>
-
-                      </div>
-
-                    </div>
-
-                  ) : (
-
-                    <>
-                      <div>
-
-                        <p className="font-medium">
-                          {q.question_text}
-                        </p>
-
-                        <div className="flex gap-2 mt-2 text-sm">
-
-                          <span className="bg-blue-600 px-2 py-1 rounded">
-                            {q.question_type === "audio" ? "🎤 Audio" : "📝 Text"}
-                          </span>
-
-                          <span className="bg-gray-600 px-2 py-1 rounded">
-                            {q.time_limit}s
-                          </span>
-
-                        </div>
-
-                      </div>
-
-                      <div className="flex gap-2">
-
-                        <button
-                          onClick={() => startEditQuestion(q)}
-                          className="bg-yellow-600 px-3 py-2 rounded"
-                        >
-                          ✏️
-                        </button>
-
-                        <button
-                          onClick={() => deleteQuestion(q.id)}
-                          className="bg-red-600 px-3 py-2 rounded"
-                        >
-                          🗑️
-                        </button>
-
-                      </div>
-                    </>
-
-                  )}
-
-                </div>
-
-              ))}
-
-            </div>
-
-          ) : (
-
-            <div className="text-gray-400 text-center py-10">
-              No questions yet
-            </div>
-
-          )}
-
-        </div>
-
+  return <section className="text-white space-y-6">
+    <h1 className="text-3xl font-bold">Manage Questions</h1>
+    {error&&<p role="alert" className="text-red-300">{error}</p>}
+    <label className="block">Select Test<select aria-label="Select Test" value={selected} disabled={busy} onChange={e=>{setSelected(e.target.value);setError('');}} className="block bg-gray-800 p-3 rounded w-full mt-2"><option value="">Choose Test</option>{tests.map(t=><option key={t.id} value={t.id}>{t.title}</option>)}</select></label>
+    {selected&&<form onSubmit={save} className="bg-gray-900 p-6 rounded space-y-4">
+      <h2>{editing?'Edit Question':'Create Question'}</h2>
+      <textarea aria-label="Question text" required maxLength={2000} value={text} onChange={e=>setText(e.target.value)} className="bg-gray-800 p-3 w-full rounded" />
+      <div className="flex flex-wrap gap-4">
+        <label>Type<select aria-label="Question type" value={type} onChange={e=>setType(e.target.value)} className="bg-gray-800 p-3 block"><option value="audio">Audio</option><option value="text">Text</option></select></label>
+        <label>Seconds<input aria-label="Time limit" type="number" min={5} max={300} required value={limit} onChange={e=>setLimit(e.target.value)} className="bg-gray-800 p-3 block" /></label>
+        <label>Order<input aria-label="Question order" type="number" min={1} max={1000} required value={order} onChange={e=>setOrder(e.target.value)} className="bg-gray-800 p-3 block" /></label>
       </div>
-
-    </div>
-
-  );
-
+      <button disabled={busy} className="bg-blue-600 px-5 py-3 rounded">{editing?'Save Question':'Create Question'}</button>
+      {editing&&<button type="button" disabled={busy} onClick={reset} className="ml-4">Cancel</button>}
+    </form>}
+    {questions.map(q=><article key={q.id} className="bg-gray-900 rounded p-5 flex justify-between gap-4"><div><h3>{q.question_text}</h3><p>{q.question_type} · {q.time_limit}s · Order {q.order_number}</p></div><div className="flex gap-4"><button disabled={busy} onClick={()=>{setEditing(q.id);setText(q.question_text);setType(q.question_type);setLimit(q.time_limit);setOrder(q.order_number);}}>Edit</button><button disabled={busy} onClick={()=>remove(q.id)} className="text-red-300">Delete</button></div></article>)}
+    {selected&&!questions.length&&<p>No questions yet.</p>}
+  </section>;
 }

@@ -1,208 +1,61 @@
 import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { API_BASE_URL } from "../config";
+import { Link, useParams, useSearchParams } from "react-router-dom";
+import { apiRequest } from "../api";
 
 export default function TestReport() {
+  const { testId } = useParams();
+  const [params] = useSearchParams();
+  const attempt = params.get("attempt");
+  const [report, setReport] = useState(null);
+  const [error, setError] = useState("");
+  const [refresh, setRefresh] = useState(0);
 
-const { testId } = useParams();
-const navigate = useNavigate();
+  useEffect(() => {
+    let active = true, timer;
+    setError("");
+    const poll = async () => {
+      try {
+        const data = await apiRequest(`/tests/report/${testId}${attempt ? `?attempt_id=${attempt}` : ""}`);
+        if (!active) return;
+        setReport(data);
+        if (data.status === "processing") timer = setTimeout(poll, 3000);
+      } catch (err) { if (active) setError(err.message); }
+    };
+    poll();
+    return () => { active = false; clearTimeout(timer); };
+  }, [testId, attempt, refresh]);
 
-const [report, setReport] = useState(null);
+  const retry = async () => {
+    try {
+      await apiRequest(`/tests/attempts/${report.attempt_id}/retry`, { method:"POST" });
+      setRefresh(value => value + 1);
+    } catch (err) { setError(err.message); }
+  };
 
-const token = localStorage.getItem("token");
-
-useEffect(() => {
-
-
-const interval = setInterval(() => {
-
-  fetch(`${API_BASE_URL}/tests/report/${testId}`, {
-    headers: {
-      Authorization: `Bearer ${token}`
-    }
-  })
-  .then(res => res.json())
-  .then(data => {
-
-    setReport(data);
-
-    if (data.overall_score > 0) {
-      clearInterval(interval);
-    }
-
-  })
-  .catch(err => console.error(err));
-
-}, 3000);
-
-return () => clearInterval(interval);
-
-
-}, [testId, token]);
-
-if (!report || report.overall_score === 0) {
-
-
-return (
-  <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-black via-gray-900 to-black text-white">
-
-    <div className="text-center">
-
-      <div className="text-5xl mb-6 animate-bounce">
-        🤖
-      </div>
-
-      <h1 className="text-2xl font-semibold mb-2">
-        AI is analyzing your responses...
-      </h1>
-
-      <p className="text-gray-400">
-        This usually takes a few seconds.
-      </p>
-
-      <div className="mt-6 animate-pulse text-blue-400">
-        Generating Report...
-      </div>
-
-    </div>
-
-  </div>
-);
-
-
-}
-
-return (
-
-
-<div className="min-h-screen bg-gradient-to-br from-black via-gray-900 to-black p-10 text-white">
-
-  <div className="max-w-3xl mx-auto bg-gray-900 p-8 rounded-xl shadow-xl">
-
-    <h1 className="text-3xl font-bold mb-6 text-center">
-      AI Test Report
-    </h1>
-
-
-    {/* Score Cards */}
-
-    <div className="grid grid-cols-2 gap-6 mb-8">
-
-      <div className="bg-black p-4 rounded-lg text-center">
-        <p className="text-gray-400">Overall Score</p>
-        <p className="text-2xl font-bold text-green-400">
-          {report.overall_score}
-        </p>
-      </div>
-
-      <div className="bg-black p-4 rounded-lg text-center">
-        <p className="text-gray-400">Level</p>
-        <p className="text-2xl font-bold text-blue-400">
-          {report.level}
-        </p>
-      </div>
-
-      <div className="bg-black p-4 rounded-lg text-center">
-        <p className="text-gray-400">Fluency</p>
-        <p className="text-xl font-bold text-yellow-400">
-          {report.average_fluency}
-        </p>
-      </div>
-
-      <div className="bg-black p-4 rounded-lg text-center">
-        <p className="text-gray-400">Grammar</p>
-        <p className="text-xl font-bold text-yellow-400">
-          {report.average_grammar}
-        </p>
-      </div>
-
-    </div>
-
-
-    {/* AI Suggestions */}
-
-    <div className="mb-8">
-
-      <h2 className="text-xl font-semibold mb-4">
-        AI Suggestions
-      </h2>
-
-      <ul className="list-disc pl-5 space-y-2 text-gray-300">
-
-        {report.suggestions?.map((s, i) => (
-          <li key={i}>{s}</li>
-        ))}
-
-      </ul>
-
-    </div>
-
-
-    {/* Per Question Feedback */}
-
-    <h2 className="text-xl font-semibold mb-4">
-      Question Feedback
-    </h2>
-
-    <div className="space-y-4 mb-8">
-
-      {report.answers?.map((a, index) => (
-
-        <div
-          key={index}
-          className="bg-black p-5 rounded-lg border border-gray-700"
-        >
-
-          <h3 className="text-lg font-semibold mb-2">
-            Question {index + 1}
-          </h3>
-
-          <p className="text-gray-300 mb-3">
-            {a.transcript || "No transcript available"}
-          </p>
-
-          <div className="grid grid-cols-3 gap-4 text-center mb-3">
-
-            <div className="bg-gray-900 p-2 rounded">
-              <p className="text-gray-400 text-sm">Fluency</p>
-              <p className="font-bold text-blue-400">{a.fluency}</p>
-            </div>
-
-            <div className="bg-gray-900 p-2 rounded">
-              <p className="text-gray-400 text-sm">Grammar</p>
-              <p className="font-bold text-yellow-400">{a.grammar}</p>
-            </div>
-
-            <div className="bg-gray-900 p-2 rounded">
-              <p className="text-gray-400 text-sm">Score</p>
-              <p className="font-bold text-green-400">{a.score}</p>
-            </div>
-
-          </div>
-
-          <p className="text-purple-300 text-sm">
-            💡 {a.feedback}
-          </p>
-
+  return <main className="min-h-screen bg-gray-950 text-white p-6">
+    <section className="max-w-3xl mx-auto bg-gray-900 rounded-xl p-8 space-y-6">
+      <h1 className="text-3xl font-bold">Practice Test Report</h1>
+      {error && <div role="alert"><p className="text-red-300">{error}</p><button onClick={() => setRefresh(value => value + 1)}>Reload report</button></div>}
+      {!error && !report && <p role="status">Loading report...</p>}
+      {report?.status === "processing" && <p role="status">Your responses are queued or being evaluated. You can leave this page and return from your result history. Initial model setup can take several minutes.</p>}
+      {report?.status === "draft" && <Link to={`/test/${testId}`} className="text-blue-400">Continue your unfinished attempt</Link>}
+      {report?.status === "failed" && <div role="alert"><p>Some answers could not be evaluated. Your responses are saved.</p><button onClick={retry} className="bg-blue-600 p-3 rounded mt-3">Retry Evaluation</button></div>}
+      {report?.status === "completed" && <>
+        <h2 className="text-xl">{report.title}</h2>
+        <div className="grid grid-cols-2 gap-4">
+          {[['Overall Score',report.overall_score],['Practice Level',report.level],['Fluency',report.average_fluency],['Grammar',report.average_grammar]].map(([label,value]) => <div key={label} className="bg-black p-4 rounded"><p>{label}</p><p className="text-2xl">{value}</p></div>)}
         </div>
-
-      ))}
-
-    </div>
-
-
-    <button
-      onClick={() => navigate("/dashboard")}
-      className="bg-blue-600 hover:bg-blue-700 px-6 py-3 rounded-lg w-full"
-    >
-      Back to Dashboard
-    </button>
-
-  </div>
-
-</div>
-
-
-);
-
+        <p className="text-gray-400">{report.scoring_note}</p>
+        <h2 className="text-xl">Suggestions</h2>
+        <ul className="list-disc pl-5">{report.suggestions.map(item => <li key={item}>{item}</li>)}</ul>
+      </>}
+      {report?.answers.map((answer,index) => <article key={answer.question_id} className="bg-black p-5 rounded space-y-2">
+        <h2 className="font-bold">Question {index + 1}: {answer.question_text}</h2>
+        <p>{answer.transcript || answer.written_answer || "No speech detected or transcription pending."}</p>
+        <p>Score: {answer.score ?? "Pending"} · Grammar: {answer.grammar ?? "Pending"} · Fluency: {answer.fluency ?? "Pending"}</p>
+        <p>{answer.feedback || answer.error || answer.status}</p>
+      </article>)}
+      <nav className="flex gap-6 text-blue-400"><Link to="/dashboard">Back to Dashboard</Link><Link to="/my-results">Result History</Link></nav>
+    </section>
+  </main>;
 }

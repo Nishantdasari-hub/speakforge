@@ -1,19 +1,20 @@
+import { lazy, Suspense } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 
-import Login from "./pages/Login";
-import Register from "./pages/Register";
-import ForgotPassword from "./pages/ForgotPassword";
-import ResetPassword from "./pages/ResetPassword";
-import AdminDashboard from "./pages/AdminDashboard";
-import AdminTests from "./pages/AdminTests";
-import AdminQuestions from "./pages/AdminQuestions";
-import AdminAnalytics from "./pages/AdminAnalytics";
-import TestReport from "./pages/TestReport";
-import Tests from "./pages/Tests";
-import UserTests from "./pages/UserTests";
-import TestDetail from "./pages/TestDetail";
-import UserDashboard from "./pages/UserDashboard";
-import MyResults from "./pages/MyResults";
+const Login = lazy(() => import("./pages/Login"));
+const Register = lazy(() => import("./pages/Register"));
+const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
+const ResetPassword = lazy(() => import("./pages/ResetPassword"));
+const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
+const AdminTests = lazy(() => import("./pages/AdminTests"));
+const AdminQuestions = lazy(() => import("./pages/AdminQuestions"));
+const AdminAnalytics = lazy(() => import("./pages/AdminAnalytics"));
+const TestReport = lazy(() => import("./pages/TestReport"));
+
+const UserTests = lazy(() => import("./pages/UserTests"));
+const TestDetail = lazy(() => import("./pages/TestDetail"));
+const UserDashboard = lazy(() => import("./pages/UserDashboard"));
+const MyResults = lazy(() => import("./pages/MyResults"));
 
 import ProtectedRoute from "./components/ProtectedRoute";
 import MainLayout from "./layout/MainLayout";
@@ -22,6 +23,7 @@ function App() {
   return (
     <BrowserRouter>
 
+      <Suspense fallback={<p role="status" className="p-8 text-white">Loading page...</p>}>
       <Routes>
 
         {/* PUBLIC ROUTES */}
@@ -66,18 +68,18 @@ function App() {
         <Route
           path="/admin/dashboard"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute adminOnly>
               <MainLayout>
                 <AdminDashboard />
               </MainLayout>
             </ProtectedRoute>
           }
         />
-        
+
         <Route
           path="/admin/tests"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute adminOnly>
               <MainLayout>
                 <AdminTests />
               </MainLayout>
@@ -88,18 +90,18 @@ function App() {
         <Route
           path="/admin/questions"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute adminOnly>
               <MainLayout>
                 <AdminQuestions />
               </MainLayout>
             </ProtectedRoute>
           }
         />
-        <Route path="/report/:testId" element={<TestReport />} />
+        <Route path="/report/:testId" element={<ProtectedRoute><TestReport /></ProtectedRoute>} />
         <Route
           path="/admin/analytics"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute adminOnly>
               <MainLayout>
                 <AdminAnalytics />
               </MainLayout>
@@ -108,8 +110,10 @@ function App() {
         />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password/:token" element={<ResetPassword />} />
-        <Route path="/my-results" element={<MyResults />} />        
+        <Route path="/my-results" element={<ProtectedRoute><MyResults /></ProtectedRoute>} />
+        <Route path="*" element={<div className="p-8 text-white">Page not found. <a href="/dashboard">Go to Dashboard</a></div>} />
       </Routes>
+      </Suspense>
 
     </BrowserRouter>
   );

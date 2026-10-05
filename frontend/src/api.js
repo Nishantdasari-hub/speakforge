@@ -1,67 +1,32 @@
-import { API_BASE_URL as BASE_URL } from "./config";
+import { API_BASE_URL } from "./config";
 
-export const getTests = async () => {
-  const res = await fetch(`${BASE_URL}/tests/`);
-  return res.json();
-};
+export function errorMessage(data, fallback = "Request failed") {
+  if (typeof data?.detail === "string") return data.detail;
+  if (Array.isArray(data?.detail)) return data.detail.map(item => item.msg).join("; ");
+  return fallback;
+}
 
-export const getDashboardStats = async (token) => {
-  const res = await fetch(`${BASE_URL}/tests/me/dashboard`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
+export async function apiRequest(path, options = {}) {
+  const token = localStorage.getItem("token");
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    ...options,
+    headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}), ...options.headers },
   });
-  if (!res.ok) {
-    throw new Error(`HTTP error! status: ${res.status}`);
+  const data = await response.json().catch(() => null);
+  if (!response.ok) {
+    if (response.status === 401) {
+      for (const key of ["token", "role", "userEmail"]) localStorage.removeItem(key);
+      window.location.assign("/login");
+    }
+    throw new Error(errorMessage(data, `Request failed (${response.status})`));
   }
-  return await res.json();
-};
+  return data;
+}
 
-export const getRecentAnswers = async (token) => {
-  const res = await fetch(`${BASE_URL}/tests/me/answers`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
-  if (!res.ok) {
-    throw new Error(`HTTP error! status: ${res.status}`);
-  }
-  return await res.json();
-};
-
-export const loginUser = async (data) => {
-  const res = await fetch(`${BASE_URL}/auth/login`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
-  });
-
-  return res.json();
-};
-
-export const registerUser = async (data) => {
-  const res = await fetch(`${BASE_URL}/auth/register`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
-  });
-
-  return res.json();
-};
-
-
-export const getTestDetail = async (id) => {
-  const res = await fetch(`${BASE_URL}/tests/${id}`);
-  return res.json();
-};
-
-export const getMyResults = async (token) => {
-  const res = await fetch(`${BASE_URL}/tests/me/results`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
-
-  return res.json();
-};
-
+export const getTests = () => apiRequest("/tests/");
+export const getDashboardStats = () => apiRequest("/tests/me/dashboard");
+export const getRecentAnswers = () => apiRequest("/tests/me/answers");
+export const getTestDetail = id => apiRequest(`/tests/${id}`);
+export const getMyResults = () => apiRequest("/tests/me/results");
+export const loginUser = data => apiRequest("/auth/login", { method: "POST", headers: {"Content-Type":"application/json"}, body:JSON.stringify(data) });
+export const registerUser = data => apiRequest("/auth/register", { method: "POST", headers: {"Content-Type":"application/json"}, body:JSON.stringify(data) });

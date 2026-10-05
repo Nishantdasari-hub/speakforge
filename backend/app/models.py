@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Text, Boolean,Float
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Text, Boolean,Float, UniqueConstraint
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from .database import Base
@@ -16,6 +16,7 @@ class User(Base):
     password = Column(String(255), nullable=False)
     role = Column(String(50), default="user")
     is_verified = Column(Boolean, default=False)
+    token_version = Column(Integer, default=0, nullable=False)
 
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -58,6 +59,14 @@ class Question(Base):
 
 class QuestionAnswer(Base):
     __tablename__ = "question_answers"
+    __table_args__ = (UniqueConstraint("attempt_id", "question_id", name="uq_attempt_question"),)
+
+    attempt_id = Column(Integer, ForeignKey("attempts.id"), nullable=True, index=True)
+    score_status = Column(String(20), default="draft", nullable=False, index=True)
+    score_error = Column(String(255))
+    score_attempts = Column(Integer, default=0, nullable=False)
+    score_started_at = Column(DateTime())
+    score_token = Column(String(36))
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"))
@@ -82,6 +91,9 @@ class QuestionAnswer(Base):
 
 class Attempt(Base):
     __tablename__ = "attempts"
+    submitted_at = Column(DateTime())
+    answers = relationship("QuestionAnswer", order_by="QuestionAnswer.id")
+    test = relationship("Test")
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"))

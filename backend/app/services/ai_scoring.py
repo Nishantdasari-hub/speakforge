@@ -1,332 +1,130 @@
-import os
-import librosa
+"""Local English practice scoring. Not a calibrated proficiency examination."""
+import logging
+import re
+from functools import lru_cache
+from threading import Lock
+
+import av
 import numpy as np
 from faster_whisper import WhisperModel
-from app.database import SessionLocal
-from app import models
+
+logger = logging.getLogger(__name__)
+_model_lock = Lock()
+_tool_lock = Lock()
+MAX_AUDIO_SECONDS = 300
+SAMPLE_RATE = 16000
+RUBRIC = "practice-v1"
 
 
-# ==============================
-# FFMPEG PATH
-# ==============================
-
-if os.name == "nt":
-    os.environ["PATH"] += os.pathsep + r"C:\ffmpeg-8.0.1-essentials_build\bin"
-
-
-# ==============================
-# LOAD WHISPER MODEL
-# ==============================
-
-model = None
-
+@lru_cache(maxsize=1)
 def get_model():
-    global model
-
-    if model is None:
-        print("Loading Faster-Whisper model...")
-
-        model = WhisperModel(
-            "base",
-            device="cpu",
-            compute_type="int8"
-        )
-
-        print("Whisper model loaded")
-
-    return model
+    return WhisperModel("base", device="cpu", compute_type="int8", cpu_threads=2, num_workers=1)
 
 
-# ==============================
-# LANGUAGE TOOL
-# ==============================
-
-tool = None
-try:
+@lru_cache(maxsize=1)
+def get_language_tool():
     import language_tool_python
-    tool = language_tool_python.LanguageTool("en-US")
-    print("LanguageTool initialized")
-except Exception as e:
-    print("LanguageTool not available (grammar checking will use basic rules):", e)
+    # Fixed version ensures cache lookup matches the downloaded distribution.
+    return language_tool_python.LanguageTool("en-US", language_tool_download_version="6.6")
 
 
-# ==============================
-# SILENCE DETECTION
-# ==============================
-
-def is_silent(audio_path, threshold=0.01):
-
+def decode_audio_file(path, max_seconds=MAX_AUDIO_SECONDS):
+    """Decode supported browser formats with a duration cap before allocating a full clip."""
+    chunks, total = [], 0
     try:
-        y, sr = librosa.load(audio_path)
-        volume = np.mean(np.abs(y))
-        return volume < threshold
+        with av.open(str(path)) as container:
+            resampler = av.AudioResampler(format="s16", layout="mono", rate=SAMPLE_RATE)
+            for frame in container.decode(audio=0):
+                for converted in resampler.resample(frame):
+                    total += converted.samples
+                    if total > max_seconds * SAMPLE_RATE:
+                        raise ValueError(f"Audio must be at most {max_seconds} seconds")
+                    chunks.append(converted.to_ndarray().flatten())
+            for converted in resampler.resample(None):
+                total += converted.samples
+                if total > max_seconds * SAMPLE_RATE:
+                    raise ValueError(f"Audio must be at most {max_seconds} seconds")
+                chunks.append(converted.to_ndarray().flatten())
+    except (av.FFmpegError, IndexError) as exc:
+        raise ValueError("The audio file cannot be decoded") from exc
+    if total < SAMPLE_RATE // 4:
+        raise ValueError("Record at least a quarter second of audio")
+    return np.concatenate(chunks).astype(np.float32) / 32768.0
 
-    except:
-        return False
 
+def is_silent(audio_path, threshold=0.001):
+    samples = decode_audio_file(audio_path)
+    return float(np.sqrt(np.mean(samples ** 2))) < threshold
 
-# ==============================
-# AUDIO DURATION
-# ==============================
 
 def get_audio_duration(audio_path):
+    return len(decode_audio_file(audio_path)) / SAMPLE_RATE
 
-    try:
-        duration = librosa.get_duration(path=audio_path)
-        print(f"Audio duration: {duration:.2f}s")
-        return duration
-
-    except:
-        return None
-
-
-# ==============================
-# TRANSCRIPTION
-# ==============================
 
 def transcribe_audio(audio_path):
+    samples = decode_audio_file(audio_path)
+    duration = len(samples) / SAMPLE_RATE
+    if float(np.sqrt(np.mean(samples ** 2))) < 0.001:
+        return "", duration
+    with _model_lock:
+        segments, _ = get_model().transcribe(
+            samples, language="en", beam_size=5, vad_filter=True,
+            condition_on_previous_text=False,
+        )
+        transcript = " ".join(segment.text.strip() for segment in segments).strip()
+    return transcript, duration
 
-    print("\n===== STARTING TRANSCRIPTION =====")
-
-    if is_silent(audio_path):
-        print("Silent audio detected")
-        return "", 0
-
-    model = get_model()
-
-    segments, info = model.transcribe(audio_path, beam_size=5)
-
-    text = ""
-
-    for segment in segments:
-        text += segment.text + " "
-
-    text = text.strip()
-
-    duration = get_audio_duration(audio_path)
-
-    print("Transcription:", text)
-    print("===== TRANSCRIPTION COMPLETE =====\n")
-
-    return text, duration
-
-
-# ==============================
-# ANSWER EVALUATION
-# ==============================
-
-def evaluate_answer(question, answer, audio_duration=None, answer_type="audio"):
-
-    print("\n===== STARTING ANSWER EVALUATION =====")
-    print("Answer:", answer)
-
-    if not answer or not answer.strip():
-        return {
-            "grammar_score": 0,
-            "fluency_score": 0,
-            "final_score": 0,
-            "grammar_errors": 0,
-            "feedback": "No speech detected.",
-            "word_count": 0
-        }
-
-    word_count = len(answer.split())
-
-    grammar_errors = 0
-    grammar_score = 5
-
-    if tool:
-        try:
-            matches = tool.check(answer)
-            grammar_errors = len(matches)
-
-            error_ratio = grammar_errors / word_count if word_count else 0
-
-            if error_ratio == 0:
-                grammar_score = 10
-            elif error_ratio <= 0.1:
-                grammar_score = 8
-            elif error_ratio <= 0.2:
-                grammar_score = 6
-            else:
-                grammar_score = 4
-
-        except:
-            grammar_score = 5
-
-
-    if answer_type == "audio":
-        fluency = calculate_speaking_fluency(answer, word_count, audio_duration)
-        final_score = round((fluency * 0.6) + (grammar_score * 0.4))
-    else:
-        fluency = calculate_writing_fluency(answer, word_count)
-        final_score = round((fluency * 0.5) + (grammar_score * 0.5))
-
-
-    feedback = generate_feedback(word_count, grammar_errors, fluency)
-
-    return {
-        "grammar_score": grammar_score,
-        "fluency_score": fluency,
-        "final_score": final_score,
-        "grammar_errors": grammar_errors,
-        "feedback": feedback,
-        "word_count": word_count
-    }
-
-
-# ==============================
-# SPEAKING FLUENCY
-# ==============================
 
 def calculate_speaking_fluency(text, word_count, audio_duration):
+    # A practice proxy based on response length and speaking pace, not pronunciation.
+    if not word_count or not audio_duration or audio_duration <= 0:
+        return 0
+    length_score = min(6, word_count / 5)
+    wpm = word_count * 60 / audio_duration
+    pace_score = max(0, 4 - abs(wpm - 125) / 40)
+    return round(min(10, length_score + pace_score), 1)
 
-    score = 0
-
-    if word_count < 5:
-        score += 1
-    elif word_count < 15:
-        score += 3
-    else:
-        score += 5
-
-    if audio_duration and word_count:
-        wpm = (word_count / audio_duration) * 60
-
-        if 90 <= wpm <= 160:
-            score += 3
-        else:
-            score += 1
-
-    return min(10, score)
-
-
-# ==============================
-# WRITING FLUENCY
-# ==============================
 
 def calculate_writing_fluency(text, word_count):
-
-    score = 0
-
-    if word_count < 5:
-        score += 1
-    elif word_count < 20:
-        score += 4
-    else:
-        score += 6
-
-    sentences = text.split(".")
-
-    if len(sentences) > 2:
-        score += 2
-
-    return min(10, score)
+    if not word_count:
+        return 0
+    sentences = [s for s in re.split(r"[.!?]+", text) if s.strip()]
+    return round(min(10, min(6, word_count / 5) + min(4, len(sentences) * 2)), 1)
 
 
-# ==============================
-# FEEDBACK
-# ==============================
-
-def generate_feedback(word_count, grammar_errors, fluency):
-
-    feedback = []
-
-    if fluency >= 8:
-        feedback.append("Excellent response.")
-    elif fluency >= 6:
-        feedback.append("Good response.")
-    else:
-        feedback.append("Needs improvement.")
-
-    if grammar_errors == 0:
-        feedback.append("Grammar is excellent.")
-    elif grammar_errors <= 3:
-        feedback.append("Minor grammar issues.")
-    else:
-        feedback.append("Multiple grammar mistakes.")
-
+def generate_feedback(word_count, grammar_errors, fluency, answer_type="audio"):
+    feedback = ["Response length and flow are strong." if fluency >= 7 else "Keep practicing response length and flow."]
+    feedback.append("No grammar issues detected." if grammar_errors == 0 else f"Review the {grammar_errors} grammar or spelling issues detected.")
     if word_count < 10:
-        feedback.append("Try to speak more.")
-
+        feedback.append("Develop your answer with more detail.")
+    if answer_type == "audio":
+        feedback.append("Speaking fluency is estimated from length and pace.")
     return " ".join(feedback)
 
 
-# ==============================
-# AUDIO BACKGROUND SCORING
-# ==============================
-
-def process_ai_scoring(answer_id, question_text, audio_path):
-
-    db = SessionLocal()
-
-    try:
-
-        transcript, duration = transcribe_audio(audio_path)
-
-        evaluation = evaluate_answer(
-            question_text,
-            transcript,
-            audio_duration=duration,
-            answer_type="audio"
-        )
-
-        answer = db.query(models.QuestionAnswer).filter(
-            models.QuestionAnswer.id == answer_id
-        ).first()
-
-        if answer:
-
-            answer.transcribed_text = transcript
-            answer.final_score = evaluation["final_score"]
-            answer.grammar_score = evaluation["grammar_score"]
-            answer.fluency_score = evaluation["fluency_score"]
-            answer.word_count = evaluation["word_count"]
-            answer.feedback = evaluation["feedback"]
-
-            db.commit()
-
-    except Exception as e:
-        print("AI scoring error:", e)
-
-    finally:
-        db.close()
-
-
-# ==============================
-# TEXT BACKGROUND SCORING
-# ==============================
-
-def process_text_scoring(answer_id, question_text, text_answer):
-
-    db = SessionLocal()
-
-    try:
-
-        evaluation = evaluate_answer(
-            question_text,
-            text_answer,
-            audio_duration=0,
-            answer_type="text"
-        )
-
-        answer = db.query(models.QuestionAnswer).filter(
-            models.QuestionAnswer.id == answer_id
-        ).first()
-
-        if answer:
-
-            answer.transcribed_text = text_answer
-            answer.final_score = evaluation["final_score"]
-            answer.grammar_score = evaluation["grammar_score"]
-            answer.fluency_score = evaluation["fluency_score"]
-            answer.word_count = evaluation["word_count"]
-            answer.feedback = evaluation["feedback"]
-
-            db.commit()
-
-    except Exception as e:
-        print("Text scoring error:", e)
-
-    finally:
-        db.close()
+def evaluate_answer(question, answer, audio_duration=None, answer_type="audio"):
+    words = re.findall(r"\b[\w]+(?:['’-][\w]+)*\b", answer or "")
+    word_count = len(words)
+    if not word_count:
+        return {"grammar_score":0, "fluency_score":0, "final_score":0,
+                "grammar_errors":0, "word_count":0,
+                "feedback":"No speech detected." if answer_type == "audio" else "No written response provided."}
+    # A dependency failure must not become a fabricated grammar score.
+    with _tool_lock:
+        tool = get_language_tool()
+        if tool is None:
+            raise RuntimeError("Grammar analysis is unavailable")
+        matches = tool.check(answer)
+    grammar_errors = len(matches)
+    grammar_score = max(0, round(10 * (1 - min(1, 2 * grammar_errors / word_count))))
+    if answer_type == "audio":
+        fluency = calculate_speaking_fluency(answer, word_count, audio_duration)
+        final = round(fluency * 0.6 + grammar_score * 0.4)
+    else:
+        fluency = calculate_writing_fluency(answer, word_count)
+        final = round((fluency + grammar_score) / 2)
+    # A one-word answer cannot earn a high overall score just for being grammatical.
+    final = min(final, 3 if word_count < 5 else 6 if word_count < 10 else 10)
+    return {"grammar_score":grammar_score, "fluency_score":fluency, "final_score":final,
+            "grammar_errors":grammar_errors, "word_count":word_count,
+            "feedback":generate_feedback(word_count, grammar_errors, fluency, answer_type)}
