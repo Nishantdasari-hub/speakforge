@@ -6,6 +6,7 @@ import unittest
 import wave
 from datetime import datetime, timedelta
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock, patch
 from urllib.parse import urlsplit
 
@@ -251,7 +252,7 @@ class ScoringTests(unittest.TestCase):
             text='I enjoy learning new languages. I practice with my friends every day because speaking regularly helps me communicate clearly and confidently.'
             tool.check.return_value=[]
             good=ai_scoring.evaluate_answer('Introduce yourself',text,answer_type='text')
-            tool.check.return_value=[object()]*10
+            tool.check.return_value=[SimpleNamespace(offset=0,error_length=1,message='Fixture issue',replacements=[]) for _ in range(10)]
             bad=ai_scoring.evaluate_answer('Introduce yourself',text,answer_type='text')
             self.assertGreater(good['final_score'],bad['final_score'])
             self.assertEqual(bad['grammar_errors'],10)
@@ -264,7 +265,7 @@ class ScoringTests(unittest.TestCase):
         with patch.object(ai_scoring,'get_language_tool',return_value=tool):
             tool.check.return_value=[]
             good=ai_scoring.evaluate_answer('', 'I enjoy learning English with my friends. We practice every morning because regular conversations help us communicate clearly and confidently in different situations.', answer_type='text')
-            tool.check.return_value=[object()]*6
+            tool.check.return_value=[SimpleNamespace(offset=0,error_length=1,message='Fixture issue',replacements=[]) for _ in range(6)]
             bad=ai_scoring.evaluate_answer('', 'He go to school yesterday. She have many book and they was very happy. I is learning English because my friend do not knows the answers.', answer_type='text')
             self.assertGreater(good['final_score'],bad['final_score'])
             self.assertLessEqual(bad['grammar_score'],6)
